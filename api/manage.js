@@ -1,29 +1,28 @@
 export default async function handler(req, res) {
-  // CORS
   res.setHeader('Access-Control-Allow-Credentials', true);
   res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,PATCH,DELETE,POST,PUT');
-  res.setHeader('Access-Control-Allow-Headers', 'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version, X-Admin-Password');
+  res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,POST,DELETE');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, X-Admin-Password, X-User-ID');
 
   if (req.method === 'OPTIONS') return res.status(200).end();
 
   const { method } = req;
   const adminPassword = process.env.ADMIN_PASSWORD;
   const githubToken = process.env.GH_TOKEN;
-  const userPassword = req.headers['x-admin-password'];
+  const repo = 'pepitogumball-lang/file-host';
+  
+  const authHeader = req.headers['x-admin-password'];
+  const userId = req.headers['x-user-id'] || 'anonymous';
+  const isAdmin = adminPassword && authHeader === adminPassword;
 
-  // 1. Verificación de Admin (Auth check)
+  // 1. Verificar Admin
   if (method === 'GET' && req.query.action === 'verify') {
-    if (adminPassword && userPassword === adminPassword) {
-      return res.status(200).json({ authorized: true, role: 'ninja-admin' });
-    }
-    return res.status(401).json({ authorized: false });
+    return res.status(200).json({ authorized: isAdmin });
   }
 
-  // 2. Modo Público: Listar archivos permanentes
-  if (method === 'GET' && !req.query.action) {
+  // 2. Listar Archivos Permanentes
+  if (method === 'GET') {
     try {
-      const repo = 'pepitogumball-lang/file-host';
       const response = await fetch(`https://api.github.com/repos/${repo}/contents/files`, {
         headers: { 'Authorization': `Bearer ${githubToken}`, 'Accept': 'application/vnd.github+json' }
       });
@@ -32,32 +31,35 @@ export default async function handler(req, res) {
       
       const files = data
         .filter(item => item.name !== '.gitkeep')
-        .map(item => ({
-          name: item.name,
-          sha: item.sha,
-          size: item.size,
-          url: `https://pepitogumball-lang.github.io/file-host/files/${item.name}`
-        }));
+        .map(item => {
+          // Extraer el Owner ID del nombre del archivo (formato: timestamp_userid_name)
+          const parts = item.name.split('_');
+          const ownerId = parts[1] || 'unknown';
+          return {
+            name: item.name,
+            displayName: parts.slice(2).join('_') || item.name,
+            sha: item.sha,
+            owner: ownerId,
+            url: `https://pepitogumball-lang.github.io/file-host/files/${item.name}`
+          };
+        });
       return res.status(200).json(files);
     } catch (e) {
-      return res.status(500).json({ error: 'Error al listar archivos' });
+      return res.status(500).json({ error: e.message });
     }
   }
 
-  // Restricción de seguridad para POST/DELETE
-  if (!adminPassword || userPassword !== adminPassword) {
-    return res.status(401).json({ error: 'Acceso denegado' });
-  }
-
-  // 3. Subida (POST)
+  // 3. Subir Archivo
   if (method === 'POST') {
-    const { name, content, folder } = req.body; // folder: 'files' o 'temp'
-    if (!name || !content) return res.status(400).json({ error: 'Faltan datos' });
+    const { name, content, type } = req.body; // type: 'temp' | 'perm'
+    if (!name || !content) return res.status(400).json({ error: 'Missing data' });
 
-    const targetFolder = folder === 'temp' ? 'temp' : 'files';
-    const safeName = name.replace(/[^a-z0-9.-]/gi, '_');
-    const repo = 'pepitogumball-lang/file-host';
-    const uploadUrl = `https://api.github.com/repos/${repo}/contents/${targetFolder}/${safeName}`;
+    const folder = type === 'temp' ? 'temp' : 'files';
+    const timestamp = Date.now();
+    const safeName = name.replace(/[^a-z0-9.-]/gi, '');
+    const finalName = `${timestamp}_${userId}_${safeName}`;
+    
+    const uploadUrl = `https://api.github.com/repos/${repo}/contents/${folder}/${finalName}`;
 
     try {
       const uploadRes = await fetch(uploadUrl, {
@@ -68,44 +70,43 @@ export default async function handler(req, res) {
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          message: `Ninja Upload [${targetFolder}]: ${safeName}`,
+          message: `Upload [${type}]: ${finalName}`,
           content: content
         })
       });
 
-      if (!uploadRes.ok) {
-        const err = await uploadRes.json();
-        throw new Error(err.message);
-      }
+      if (!uploadRes.ok) throw new Error('Upload failed');
 
       return res.status(200).json({ 
         success: true, 
-        name: safeName, 
-        url: `https://pepitogumball-lang.github.io/file-host/${targetFolder}/${safeName}` 
+        url: `https://pepitogumball-lang.github.io/file-host/${folder}/${finalName}` 
       });
     } catch (error) {
       return res.status(500).json({ error: error.message });
     }
   }
 
-  // 4. Borrado (DELETE)
+  // 4. Borrar Archivo
   if (method === 'DELETE') {
-    const { name, sha } = req.body;
-    const repo = 'pepitogumball-lang/file-host';
-    const deleteUrl = `https://api.github.com/repos/${repo}/contents/files/${name}`;
+    const { name, sha, owner } = req.body;
+    
+    // Solo permitir borrar si es admin O si el userId coincide con el owner
+    if (!isAdmin && userId !== owner) {
+      return res.status(403).json({ error: 'Unauthorized' });
+    }
 
     try {
-      const deleteRes = await fetch(deleteUrl, {
+      const deleteRes = await fetch(`https://api.github.com/repos/${repo}/contents/files/${name}`, {
         method: 'DELETE',
         headers: { 
           'Authorization': `Bearer ${githubToken}`, 
           'Accept': 'application/vnd.github+json',
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({ message: `Admin Delete: ${name}`, sha: sha })
+        body: JSON.stringify({ message: `Delete: ${name}`, sha: sha })
       });
 
-      if (!deleteRes.ok) throw new Error('No se pudo borrar');
+      if (!deleteRes.ok) throw new Error('Delete failed');
       return res.status(200).json({ success: true });
     } catch (error) {
       return res.status(500).json({ error: error.message });

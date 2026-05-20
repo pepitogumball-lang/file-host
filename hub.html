@@ -32,18 +32,18 @@
         <h1>Ninja Hub 📦</h1>
         <a href="index.html" style="color: #8b949e; text-decoration: none; font-size: 0.9rem;">Volver ➔</a>
     </div>
-    <p id="status" style="color: #8b949e; margin-bottom: 20px;">Escaneando repositorio...</p>
+    <p id="status" style="color: #8b949e; margin-bottom: 20px;">Cargando archivos...</p>
     <div id="file-grid" class="grid"></div>
 </div>
 
 <div id="admin-panel" class="container">
     <h2 style="color: var(--success); margin-top: 0;">Panel de Administración 🛠️</h2>
     <div class="upload-area" onclick="document.getElementById('file-input').click()">
-        <span id="upload-label">Soltar archivo o hacer Click para subir</span>
+        <span id="upload-label">Click para subir un nuevo archivo</span>
         <input type="file" id="file-input" onchange="uploadFile(this.files[0])">
     </div>
     <div style="display: flex; justify-content: space-between; align-items: center;">
-        <small style="color: #8b949e;">Sesión activa: Sombras</small>
+        <small style="color: #8b949e;">Sesión activa: Sombras Autorizadas</small>
         <button onclick="logout()" style="max-width: 150px; border-color: var(--danger); color: var(--danger);">Cerrar Sesión</button>
     </div>
 </div>
@@ -56,52 +56,51 @@
         const grid = document.getElementById('file-grid');
         const status = document.getElementById('status');
         
+        // MOSTRAR PANEL DE ADMIN DE INMEDIATO SI EXISTE SESIÓN
+        if (PASS && API_URL) {
+            document.getElementById('admin-panel').style.display = 'block';
+        }
+
         try {
             const res = await fetch('files.json?' + Date.now());
             const files = res.ok ? await res.json() : [];
 
             if (files.length === 0) {
-                status.innerText = "No se encontraron archivos en el depósito.";
-                return;
-            }
-
-            status.innerText = `${files.length} archivos detectados.`;
-            grid.innerHTML = '';
-            
-            files.forEach(f => {
-                const permLink = `${window.location.origin}${window.location.pathname.replace('hub.html', '')}files/${f.name}`;
-                const tempLink = API_URL ? `${API_URL}/api/raw?name=${f.name}` : '#';
-
-                const card = document.createElement('div');
-                card.className = 'card';
-                card.innerHTML = `
-                    <h3>${f.name}</h3>
-                    <div class="actions">
-                        <button class="btn-link" onclick="copy('${permLink}')">Link Perm.</button>
-                        <button class="btn-link" onclick="copy('${tempLink}')">Link Temp.</button>
-                        ${PASS ? `<button class="btn-del" onclick="del('${f.name}', '${f.sha}')">Borrar</button>` : ''}
-                    </div>
-                `;
-                grid.appendChild(card);
-            });
-
-            if (PASS && API_URL) {
-                document.getElementById('admin-panel').style.display = 'block';
+                status.innerText = "No hay archivos públicos todavía.";
+                grid.innerHTML = '<p style="grid-column: 1/-1; text-align: center; color: #8b949e; padding: 40px;">El depósito está vacío.</p>';
+            } else {
+                status.innerText = `${files.length} archivos en el depósito.`;
+                grid.innerHTML = '';
+                files.forEach(f => {
+                    const permLink = `${window.location.origin}${window.location.pathname.replace('hub.html', '')}files/${f.name}`;
+                    const tempLink = API_URL ? `${API_URL}/api/raw?name=${f.name}` : '#';
+                    const card = document.createElement('div');
+                    card.className = 'card';
+                    card.innerHTML = `
+                        <h3>${f.name}</h3>
+                        <div class="actions">
+                            <button class="btn-link" onclick="copy('${permLink}')">Link Perm.</button>
+                            <button class="btn-link" onclick="copy('${tempLink}')">Link Temp.</button>
+                            ${PASS ? `<button class="btn-del" onclick="del('${f.name}', '${f.sha}')">Borrar</button>` : ''}
+                        </div>
+                    `;
+                    grid.appendChild(card);
+                });
             }
         } catch (e) {
-            status.innerText = "Error cargando archivos.";
+            status.innerText = "Error al conectar con la base de datos.";
         }
     }
 
     function copy(text) {
         navigator.clipboard.writeText(text);
-        alert("Copiado al portapapeles!");
+        alert("¡Link copiado!");
     }
 
     async function uploadFile(file) {
         if (!file || !API_URL) return;
         const label = document.getElementById('upload-label');
-        label.innerText = `Subiendo ${file.name}...`;
+        label.innerText = `Subiendo: ${file.name}...`;
 
         const reader = new FileReader();
         reader.onload = async (e) => {
@@ -113,13 +112,13 @@
                     body: JSON.stringify({ name: file.name, content })
                 });
                 if (res.ok) {
-                    alert("¡Archivo subido con éxito!");
+                    alert("¡Archivo subido!");
                     location.reload();
                 } else {
-                    alert("Fallo en la subida. Revisa el password.");
+                    alert("Error en la subida. Verifica tu configuración.");
                 }
             } catch (err) {
-                alert("Error de conexión con la API.");
+                alert("Error de conexión con Vercel.");
             }
             label.innerText = "Click para subir otro archivo";
         };
@@ -127,14 +126,16 @@
     }
 
     async function del(name, sha) {
-        if (!confirm(`¿Estás seguro de eliminar ${name}?`)) return;
-        const res = await fetch(`${API_URL}/api/manage`, {
-            method: 'DELETE',
-            headers: { 'Content-Type': 'application/json', 'x-admin-password': PASS },
-            body: JSON.stringify({ name, sha })
-        });
-        if (res.ok) location.reload();
-        else alert("No se pudo borrar.");
+        if (!confirm(`¿Eliminar ${name} permanentemente?`)) return;
+        try {
+            const res = await fetch(`${API_URL}/api/manage`, {
+                method: 'DELETE',
+                headers: { 'Content-Type': 'application/json', 'x-admin-password': PASS },
+                body: JSON.stringify({ name, sha })
+            });
+            if (res.ok) location.reload();
+            else alert("No se pudo borrar.");
+        } catch (e) { alert("Error de conexión."); }
     }
 
     function logout() {

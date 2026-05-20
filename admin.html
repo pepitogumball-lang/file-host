@@ -3,168 +3,167 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Admin Hub 🎛️</title>
+    <title>Ninja Hub Admin 🎛️</title>
     <style>
-        :root { --bg: #0d1117; --card: #161b22; --border: #30363d; --text: #c9d1d9; --blue: #58a6ff; --green: #238636; --red: #da3633; }
-        body { font-family: -apple-system, sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 20px; display: flex; flex-direction: column; align-items: center; }
-        .container { width: 100%; max-width: 800px; }
-        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
-        .card { background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 15px; margin-bottom: 15px; }
-        input, button { padding: 10px; border-radius: 6px; border: 1px solid var(--border); background: var(--bg); color: var(--text); }
-        .btn-green { background: var(--green); color: white; border: none; cursor: pointer; }
-        .btn-red { background: var(--red); color: white; border: none; cursor: pointer; padding: 5px 10px; }
-        .btn-blue { background: var(--blue); color: var(--bg); border: none; cursor: pointer; }
-        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-        th, td { text-align: left; padding: 12px; border-bottom: 1px solid var(--border); }
+        body { font-family: sans-serif; background: #0d1117; color: white; display: flex; flex-direction: column; align-items: center; padding: 2rem; }
+        .container { width: 100%; max-width: 800px; background: #161b22; padding: 2rem; border-radius: 12px; border: 1px solid #30363d; }
+        h1 { color: #58a6ff; margin-bottom: 1.5rem; display: flex; align-items: center; gap: 10px; }
+        .config-section { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 2rem; padding: 1rem; background: #0d1117; border-radius: 8px; border: 1px solid #30363d; }
+        .input-group { display: flex; flex-direction: column; gap: 5px; }
+        label { font-size: 0.8rem; color: #8b949e; }
+        input { background: #0d1117; border: 1px solid #30363d; color: white; padding: 8px; border-radius: 4px; }
+        .upload-zone { border: 2px dashed #30363d; padding: 2rem; text-align: center; border-radius: 8px; margin-bottom: 2rem; cursor: pointer; transition: 0.2s; }
+        .upload-zone:hover { border-color: #58a6ff; background: #1f242c; }
+        .file-list { display: flex; flex-direction: column; gap: 10px; }
+        .file-item { background: #0d1117; padding: 10px 15px; border-radius: 6px; display: flex; justify-content: space-between; align-items: center; border: 1px solid #30363d; }
+        .file-info { display: flex; flex-direction: column; }
+        .file-name { font-weight: bold; color: #c9d1d9; }
+        .file-meta { font-size: 0.75rem; color: #8b949e; }
         .actions { display: flex; gap: 10px; }
-        #login-overlay { position: fixed; inset: 0; background: var(--bg); display: flex; align-items: center; justify-content: center; z-index: 100; }
-        .hidden { display: none !important; }
-        #status-msg { fixed: bottom 20px right 20px; background: var(--blue); color: var(--bg); padding: 10px 20px; border-radius: 5px; display: none; }
+        button { padding: 6px 12px; border-radius: 4px; border: none; cursor: pointer; font-weight: bold; transition: 0.2s; }
+        .btn-copy { background: #238636; color: white; }
+        .btn-copy:hover { background: #2ea043; }
+        .btn-del { background: #da3633; color: white; }
+        .btn-del:hover { background: #f85149; }
+        .btn-refresh { background: #21262d; color: #c9d1d9; border: 1px solid #30363d; margin-bottom: 1rem; }
+        #status { position: fixed; bottom: 20px; right: 20px; padding: 10px 20px; border-radius: 6px; display: none; }
     </style>
 </head>
 <body>
 
-<div id="login-overlay">
-    <div class="card" style="width: 300px; text-align: center;">
-        <h2>Acceso Admin</h2>
-        <input type="password" id="admin-pass" placeholder="Password" style="width: 80%; margin-bottom: 15px;">
-        <button class="btn-green" onclick="initHub()" style="width: 100%;">Entrar</button>
-    </div>
-</div>
+<div class="container">
+    <h1>Ninja Hub Admin 🎛️</h1>
 
-<div class="container hidden" id="main-hub">
-    <div class="header">
-        <h1>File Hub 🎛️</h1>
-        <div class="actions">
-            <input type="text" id="search" placeholder="Buscar..." oninput="renderFiles()">
-            <label for="file-upload" class="btn-green" style="padding: 10px; cursor: pointer;">Subir Permanente</label>
-            <input type="file" id="file-upload" class="hidden" onchange="uploadFile()">
+    <div class="config-section">
+        <div class="input-group">
+            <label>Vercel API URL</label>
+            <input type="text" id="apiUrl" placeholder="https://tu-api.vercel.app" onchange="saveConfig()">
+        </div>
+        <div class="input-group">
+            <label>Admin Password</label>
+            <input type="password" id="adminPass" placeholder="Tu contraseña" onchange="saveConfig()">
         </div>
     </div>
 
-    <div class="card">
-        <table id="file-table">
-            <thead>
-                <tr>
-                    <th>Nombre</th>
-                    <th>Tamaño</th>
-                    <th>Acciones</th>
-                </tr>
-            </thead>
-            <tbody id="file-list"></tbody>
-        </table>
+    <div class="upload-zone" onclick="document.getElementById('fileInput').click()">
+        <p>Click para subir archivo permanente al repo 🚀</p>
+        <input type="file" id="fileInput" style="display: none" onchange="handleUpload(this)">
+    </div>
+
+    <div style="display: flex; justify-content: space-between; align-items: center;">
+        <h2>Archivos Permanentes (/files)</h2>
+        <button class="btn-refresh" onclick="loadFiles()">Actualizar Lista 🔄</button>
+    </div>
+    
+    <div class="file-list" id="fileList">
+        <p style="color: #8b949e">Cargando archivos...</p>
     </div>
 </div>
 
-<div id="status-msg"></div>
+<div id="status"></div>
 
 <script>
-    let API_URL = ''; // Se llenará con la URL de Vercel
-    let files = [];
-    let password = '';
+    const apiUrlInput = document.getElementById('apiUrl');
+    const adminPassInput = document.getElementById('adminPass');
+    const fileList = document.getElementById('fileList');
+    const statusDiv = document.getElementById('status');
 
-    function showStatus(msg) {
-        const el = document.getElementById('status-msg');
-        el.innerText = msg;
-        el.style.display = 'block';
-        setTimeout(() => el.style.display = 'none', 3000);
+    // Load config from localStorage
+    apiUrlInput.value = localStorage.getItem('ninja_api_url') || '';
+    adminPassInput.value = localStorage.getItem('ninja_admin_pass') || '';
+
+    function saveConfig() {
+        localStorage.setItem('ninja_api_url', apiUrlInput.value);
+        localStorage.setItem('ninja_admin_pass', adminPassInput.value);
     }
 
-    async function initHub() {
-        password = document.getElementById('admin-pass').value;
-        // La URL de Vercel será algo como: https://tu-proyecto.vercel.app
-        // Para Albertito, asumiremos que el backend está en el mismo dominio o en uno que él configurará.
-        // Podríamos intentar detectar la URL de Vercel o pedirla una vez.
-        // Por ahora, usamos una ruta relativa o le pedimos que la configure.
-        API_URL = prompt("Introduce la URL de tu backend en Vercel (ej: https://file-host-backend.vercel.app/api/manage):", localStorage.getItem('hub_api') || '');
-        if(!API_URL) return;
-        localStorage.setItem('hub_api', API_URL);
-
-        const res = await fetch(API_URL, { headers: { 'X-Admin-Password': password } });
-        if (res.ok) {
-            document.getElementById('login-overlay').classList.add('hidden');
-            document.getElementById('main-hub').classList.remove('hidden');
-            loadFiles();
-        } else {
-            alert("Password incorrecto o error de API");
-        }
+    function showStatus(msg, isError = false) {
+        statusDiv.innerText = msg;
+        statusDiv.style.display = 'block';
+        statusDiv.style.background = isError ? '#da3633' : '#238636';
+        setTimeout(() => statusDiv.style.display = 'none', 3000);
     }
 
     async function loadFiles() {
-        showStatus("Cargando archivos...");
-        const res = await fetch(API_URL, { headers: { 'X-Admin-Password': password } });
-        files = await res.json();
-        renderFiles();
+        try {
+            const res = await fetch('files.json?t=' + Date.now());
+            if (!res.ok) throw new Error();
+            const files = await res.json();
+            renderFiles(files);
+        } catch (e) {
+            fileList.innerHTML = '<p style="color: #da3633">No se pudo cargar files.json. Asegúrate de que el workflow haya corrido.</p>';
+        }
     }
 
-    function renderFiles() {
-        const query = document.getElementById('search').value.toLowerCase();
-        const list = document.getElementById('file-list');
-        list.innerHTML = '';
-
-        files.filter(f => f.name.toLowerCase().includes(query)).forEach(f => {
-            const tr = document.createElement('tr');
-            tr.innerHTML = `
-                <td>${f.name}</td>
-                <td>${(f.size / 1024).toFixed(1)} KB</td>
-                <td class="actions">
-                    <button class="btn-blue" onclick="copyLink('${f.permanent_url}')">Link</button>
-                    <button class="btn-red" onclick="deleteFile('${f.name}', '${f.sha}')">Borrar</button>
-                </td>
-            `;
-            list.appendChild(tr);
-        });
+    function renderFiles(files) {
+        if (files.length === 0) {
+            fileList.innerHTML = '<p style="color: #8b949e">No hay archivos aún.</p>';
+            return;
+        }
+        fileList.innerHTML = files.map(f => `
+            <div class="file-item">
+                <div class="file-info">
+                    <span class="file-name">${f.name}</span>
+                    <span class="file-meta">${(f.size / 1024).toFixed(1)} KB</span>
+                </div>
+                <div class="actions">
+                    <button class="btn-copy" onclick="copyLink('${f.name}')">Link</button>
+                    <button class="btn-del" onclick="deleteFile('${f.name}')">Borrar</button>
+                </div>
+            </div>
+        `).join('');
     }
 
-    async function uploadFile() {
-        const input = document.getElementById('file-upload');
+    function copyLink(name) {
+        const url = `${window.location.origin}${window.location.pathname.replace('admin.html', '')}files/${name}`;
+        navigator.clipboard.writeText(url);
+        showStatus('Link copiado! 📋');
+    }
+
+    async function handleUpload(input) {
         if (!input.files[0]) return;
-        
         const file = input.files[0];
-        showStatus(`Subiendo ${file.name}...`);
-        
         const reader = new FileReader();
         reader.onload = async () => {
-            const base64 = reader.result.split(',')[1];
-            const res = await fetch(API_URL, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'X-Admin-Password': password },
-                body: JSON.stringify({ name: file.name, content: base64 })
-            });
-            
-            if (res.ok) {
-                showStatus("¡Subido! Espera 1 min al deploy de GH Pages.");
-                setTimeout(loadFiles, 2000);
-            } else {
-                alert("Error al subir");
-            }
+            const content = reader.result.split(',')[1];
+            await callApi('POST', { name: file.name, content });
         };
         reader.readAsDataURL(file);
     }
 
-    async function deleteFile(name, sha) {
-        if (!confirm(`¿Seguro que quieres borrar ${name}?`)) return;
-        
-        showStatus(`Borrando ${name}...`);
-        const res = await fetch(API_URL, {
-            method: 'DELETE',
-            headers: { 'Content-Type': 'application/json', 'X-Admin-Password': password },
-            body: JSON.stringify({ name, sha })
-        });
+    async function deleteFile(name) {
+        if (!confirm(`¿Borrar ${name} permanentemente?`)) return;
+        await callApi('DELETE', { name });
+    }
 
-        if (res.ok) {
-            showStatus("Borrado exitoso");
-            loadFiles();
-        } else {
-            alert("Error al borrar");
+    async function callApi(method, data) {
+        const url = apiUrlInput.value.replace(/\/$/, '') + '/api/manage';
+        const password = adminPassInput.value;
+        if (!url || !password) {
+            alert('Configura la URL de la API y el Password primero.');
+            return;
+        }
+
+        showStatus('Procesando... ⏳');
+        try {
+            const res = await fetch(url, {
+                method,
+                headers: { 'Content-Type': 'application/json', 'x-admin-password': password },
+                body: JSON.stringify(data)
+            });
+            const resData = await res.json();
+            if (res.ok) {
+                showStatus('Éxito! 🎉 El repo se está actualizando.');
+                setTimeout(loadFiles, 2000);
+            } else {
+                showStatus('Error: ' + (resData.error || 'Fallo desconocido'), true);
+            }
+        } catch (e) {
+            showStatus('Error de conexión a la API ❌', true);
         }
     }
 
-    function copyLink(url) {
-        navigator.clipboard.writeText(url);
-        showStatus("¡Link copiado!");
-    }
+    loadFiles();
 </script>
-
 </body>
 </html>

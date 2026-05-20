@@ -3,65 +3,68 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Bienvenido Ninja 🥷</title>
+    <title>Ninja File Host 📦</title>
     <style>
-        body { font-family: sans-serif; background: #0d1117; color: white; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
+        body { font-family: -apple-system, sans-serif; background: #0d1117; color: white; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; overflow: hidden; }
         .box { text-align: center; padding: 2rem; border: 1px solid #30363d; border-radius: 12px; background: #161b22; max-width: 400px; }
         h1 { color: #58a6ff; }
-        input { background: #0d1117; border: 1px solid #30363d; color: white; padding: 10px; border-radius: 6px; width: 80%; margin: 10px 0; }
-        button { background: #238636; color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; }
-        .hidden { display: none; }
+        a { color: #58a6ff; text-decoration: none; font-weight: bold; }
+        
+        /* Modal Secreto */
+        #secret-login { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 1000; justify-content: center; align-items: center; }
+        .modal { background: #161b22; padding: 2rem; border: 1px solid #30363d; border-radius: 12px; text-align: center; }
+        input { background: #0d1117; border: 1px solid #30363d; color: white; padding: 12px; border-radius: 6px; width: 250px; margin: 10px 0; display: block; }
+        button { background: #238636; color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; width: 100%; }
     </style>
 </head>
 <body>
 
-<div class="box" id="main-box">
+<div class="box">
     <h1>Ninja File Host 📦</h1>
-    <p>Solo para sombras autorizadas.</p>
-    <a href="hub.html" style="color: #58a6ff; text-decoration: none;">Ir al Hub Público ➔</a>
-    <br><br>
-    <small style="color: #8b949e; cursor: pointer;" onclick="showLogin()">Acceso Admin</small>
+    <p>Depósito de archivos seguro y privado.</p>
+    <a href="hub.html">Ver Archivos Públicos ➔</a>
 </div>
 
-<div class="box hidden" id="login-box">
-    <h1>Admin Login 🔐</h1>
-    <input type="password" id="admin-pass" placeholder="Password Ninja">
-    <input type="text" id="api-url" placeholder="URL de Vercel (https://...)">
-    <button onclick="login()">Entrar</button>
+<!-- Solo se activa con el Hash Secreto -->
+<div id="secret-login">
+    <div class="modal">
+        <h2 style="color: #58a6ff;">Panel de Sombra 🔐</h2>
+        <input type="password" id="admin-pass" placeholder="Password Maestro">
+        <input type="text" id="api-url" placeholder="URL de la API (Vercel)">
+        <button onclick="login()">Desbloquear Hub</button>
+        <p style="font-size: 0.7rem; color: #8b949e; margin-top: 15px; cursor: pointer;" onclick="closeModal()">Cancelar</p>
+    </div>
 </div>
 
 <script>
-    const STORAGE_KEY = "ninja_api_url";
-    const PASS_KEY = "ninja_admin_pass";
+    const SECRET_HASH = "#Holaquetalsoypepi5#";
+    
+    function checkHash() {
+        if (window.location.hash === SECRET_HASH) {
+            document.getElementById('secret-login').style.display = 'flex';
+        }
+    }
 
-    function showLogin() {
-        document.getElementById('main-box').classList.add('hidden');
-        document.getElementById('login-box').classList.remove('hidden');
-        
-        // Auto-llenar si ya existen
-        if (localStorage.getItem(STORAGE_KEY)) document.getElementById('api-url').value = localStorage.getItem(STORAGE_KEY);
+    function closeModal() {
+        document.getElementById('secret-login').style.display = 'none';
+        window.location.hash = "";
     }
 
     function login() {
         const pass = document.getElementById('admin-pass').value;
         const url = document.getElementById('api-url').value;
 
-        if (pass === "Holaquetalsoypepi5#" && url.startsWith('http')) {
-            localStorage.setItem(STORAGE_KEY, url);
-            localStorage.setItem(PASS_KEY, pass);
-            alert("✨ Acceso concedido.");
+        if (pass === "Holaquetalsoypepi5#") {
+            localStorage.setItem("ninja_api_url", url);
+            localStorage.setItem("ninja_admin_pass", pass);
             window.location.href = "hub.html";
         } else {
-            alert("❌ Datos incorrectos.");
+            alert("Acceso Denegado.");
         }
     }
 
-    // Mantener también el truco del teclado por si acaso
-    let sequence = "";
-    document.addEventListener('keydown', (e) => {
-        sequence += e.key;
-        if (sequence.endsWith("Holaquetalsoypepi5#")) showLogin();
-    });
+    window.addEventListener('hashchange', checkHash);
+    window.onload = checkHash;
 </script>
 
 </body>

@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Hub 🎛️</title>
+    <style>
+        :root { --bg: #0d1117; --card: #161b22; --border: #30363d; --text: #c9d1d9; --blue: #58a6ff; --green: #238636; --red: #da3633; }
+        body { font-family: -apple-system, sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 20px; display: flex; flex-direction: column; align-items: center; }
+        .container { width: 100%; max-width: 800px; }
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        .card { background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 15px; margin-bottom: 15px; }
+        input, button { padding: 10px; border-radius: 6px; border: 1px solid var(--border); background: var(--bg); color: var(--text); }
+        .btn-green { background: var(--green); color: white; border: none; cursor: pointer; }
+        .btn-red { background: var(--red); color: white; border: none; cursor: pointer; padding: 5px 10px; }
+        .btn-blue { background: var(--blue); color: var(--bg); border: none; cursor: pointer; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th, td { text-align: left; padding: 12px; border-bottom: 1px solid var(--border); }
+        .actions { display: flex; gap: 10px; }
+        #login-overlay { position: fixed; inset: 0; background: var(--bg); display: flex; align-items: center; justify-content: center; z-index: 100; }
+        .hidden { display: none !important; }
+        #status-msg { fixed: bottom 20px right 20px; background: var(--blue); color: var(--bg); padding: 10px 20px; border-radius: 5px; display: none; }
+    </style>
+</head>
+<body>
+
+<div id="login-overlay">
+    <div class="card" style="width: 300px; text-align: center;">
+        <h2>Acceso Admin</h2>
+        <input type="password" id="admin-pass" placeholder="Password" style="width: 80%; margin-bottom: 15px;">
+        <button class="btn-green" onclick="initHub()" style="width: 100%;">Entrar</button>
+    </div>
+</div>
+
+<div class="container hidden" id="main-hub">
+    <div class="header">
+        <h1>File Hub 🎛️</h1>
+        <div class="actions">
+            <input type="text" id="search" placeholder="Buscar..." oninput="renderFiles()">
+            <label for="file-upload" class="btn-green" style="padding: 10px; cursor: pointer;">Subir Permanente</label>
+            <input type="file" id="file-upload" class="hidden" onchange="uploadFile()">
+        </div>
+    </div>
+
+    <div class="card">
+        <table id="file-table">
+            <thead>
+                <tr>
+                    <th>Nombre</th>
+                    <th>Tamaño</th>
+                    <th>Acciones</th>
+                </tr>
+            </thead>
+            <tbody id="file-list"></tbody>
+        </table>
+    </div>
+</div>
+
+<div id="status-msg"></div>
+
+<script>
+    let API_URL = ''; // Se llenará con la URL de Vercel
+    let files = [];
+    let password = '';
+
+    function showStatus(msg) {
+        const el = document.getElementById('status-msg');
+        el.innerText = msg;
+        el.style.display = 'block';
+        setTimeout(() => el.style.display = 'none', 3000);
+    }
+
+    async function initHub() {
+        password = document.getElementById('admin-pass').value;
+        // La URL de Vercel será algo como: https://tu-proyecto.vercel.app
+        // Para Albertito, asumiremos que el backend está en el mismo dominio o en uno que él configurará.
+        // Podríamos intentar detectar la URL de Vercel o pedirla una vez.
+        // Por ahora, usamos una ruta relativa o le pedimos que la configure.
+        API_URL = prompt("Introduce la URL de tu backend en Vercel (ej: https://file-host-backend.vercel.app/api/manage):", localStorage.getItem('hub_api') || '');
+        if(!API_URL) return;
+        localStorage.setItem('hub_api', API_URL);
+
+        const res = await fetch(API_URL, { headers: { 'X-Admin-Password': password } });
+        if (res.ok) {
+            document.getElementById('login-overlay').classList.add('hidden');
+            document.getElementById('main-hub').classList.remove('hidden');
+            loadFiles();
+        } else {
+            alert("Password incorrecto o error de API");
+        }
+    }
+
+    async function loadFiles() {
+        showStatus("Cargando archivos...");
+        const res = await fetch(API_URL, { headers: { 'X-Admin-Password': password } });
+        files = await res.json();
+        renderFiles();
+    }
+
+    function renderFiles() {
+        const query = document.getElementById('search').value.toLowerCase();
+        const list = document.getElementById('file-list');
+        list.innerHTML = '';
+
+        files.filter(f => f.name.toLowerCase().includes(query)).forEach(f => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td>${f.name}</td>
+                <td>${(f.size / 1024).toFixed(1)} KB</td>
+                <td class="actions">
+                    <button class="btn-blue" onclick="copyLink('${f.permanent_url}')">Link</button>
+                    <button class="btn-red" onclick="deleteFile('${f.name}', '${f.sha}')">Borrar</button>
+                </td>
+            `;
+            list.appendChild(tr);
+        });
+    }
+
+    async function uploadFile() {
+        const input = document.getElementById('file-upload');
+        if (!input.files[0]) return;
+        
+        const file = input.files[0];
+        showStatus(`Subiendo ${file.name}...`);
+        
+        const reader = new FileReader();
+        reader.onload = async () => {
+            const base64 = reader.result.split(',')[1];
+            const res = await fetch(API_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-Admin-Password': password },
+                body: JSON.stringify({ name: file.name, content: base64 })
+            });
+            
+            if (res.ok) {
+                showStatus("¡Subido! Espera 1 min al deploy de GH Pages.");
+                setTimeout(loadFiles, 2000);
+            } else {
+                alert("Error al subir");
+            }
+        };
+        reader.readAsDataURL(file);
+    }
+
+    async function deleteFile(name, sha) {
+        if (!confirm(`¿Seguro que quieres borrar ${name}?`)) return;
+        
+        showStatus(`Borrando ${name}...`);
+        const res = await fetch(API_URL, {
+            method: 'DELETE',
+            headers: { 'Content-Type': 'application/json', 'X-Admin-Password': password },
+            body: JSON.stringify({ name, sha })
+        });
+
+        if (res.ok) {
+            showStatus("Borrado exitoso");
+            loadFiles();
+        } else {
+            alert("Error al borrar");
+        }
+    }
+
+    function copyLink(url) {
+        navigator.clipboard.writeText(url);
+        showStatus("¡Link copiado!");
+    }
+</script>
+
+</body>
+</html>

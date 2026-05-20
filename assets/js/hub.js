@@ -2,7 +2,7 @@
     const API = "https://file-host-mu.vercel.app/api/manage";
     const AUTH_KEY = "n_adm_token";
     const UID_KEY = "n_uid";
-    const HASH_SECRET = "#Holaquetalsoypepi5#";
+    const ADMIN_PASS = "Holaquetalsoypepi5#";
 
     const STORE = {
         id: () => {
@@ -22,32 +22,32 @@
             .w { width: 100%; max-width: 600px; }
             .card { background: var(--c); border: 1px solid var(--b); border-radius: 8px; padding: 12px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; }
             .btn { background: #21262d; border: 1px solid var(--b); color: var(--t); padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 13px; transition: 0.2s; }
-            .btn:hover { background: #30363d; }
             .btn-p { background: var(--s); color: white; border: none; }
             .btn-d { color: var(--d); border-color: #f8514933; }
             .up-box { background: var(--c); border: 1px solid var(--b); padding: 20px; border-radius: 10px; margin-bottom: 20px; text-align: center; }
-            .modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); display: flex; justify-content: center; align-items: center; z-index: 100; }
-            .modal-content { background: var(--c); padding: 30px; border-radius: 12px; border: 1px solid var(--p); text-align: center; width: 90%; max-width: 400px; }
-            input[type="password"] { width: 100%; padding: 10px; margin: 15px 0; background: var(--bg); border: 1px solid var(--b); color: white; border-radius: 6px; text-align: center; }
             .tag { font-size: 10px; padding: 2px 6px; border-radius: 4px; background: var(--b); margin-left: 8px; font-weight: bold; }
             .adm-tag { border: 1px solid var(--s); color: var(--s); }
             .hidden { display: none !important; }
+            
+            /* Pantalla de Login Minimalista Negra */
+            #login-screen { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #000; display: flex; justify-content: center; align-items: center; z-index: 9999; flex-direction: column; }
+            #login-screen label { color: #fff; margin-bottom: 20px; font-size: 18px; letter-spacing: 1px; }
+            #login-input { background: transparent; border: none; border-bottom: 1px solid #333; color: #fff; text-align: center; font-size: 20px; width: 250px; outline: none; padding: 10px; }
+            #login-input:focus { border-bottom-color: var(--p); }
+            #login-error { color: var(--d); font-size: 12px; margin-top: 15px; }
         `,
         init() {
             document.head.innerHTML += `<style>${this.css}</style>`;
             document.body.innerHTML = `
-                <div id="admin-modal" class="modal hidden">
-                    <div class="modal-content">
-                        <h3 style="color:var(--p); margin:0;">Acceso Maestro 🥷</h3>
-                        <p style="font-size:12px; color:#8b949e">Pega el link maestro o token para activar</p>
-                        <input type="password" id="adm-pass" placeholder="••••••••••••">
-                        <button class="btn btn-p" style="width:100%" onclick="Hub.loginFromModal()">Activar Motor</button>
-                    </div>
+                <div id="login-screen" class="hidden">
+                    <label>Contraseña</label>
+                    <input type="password" id="login-input" autocomplete="off">
+                    <div id="login-error" class="hidden">Contraseña incorrecta</div>
                 </div>
 
-                <div class="w">
+                <div id="hub-content" class="w">
                     <header style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
-                        <h2 style="color:var(--p); margin:0; cursor:pointer" onclick="location.href='index.html'">Ninja Hub <span id="adm-ind"></span></h2>
+                        <h2 style="color:var(--p); margin:0;">Ninja Hub <span id="adm-ind"></span></h2>
                         <span style="font-size:12px; color:#8b949e">ID: ${STORE.id()}</span>
                     </header>
                     
@@ -68,12 +68,21 @@
                     </div>
                 </div>
             `;
-            this.checkHash();
+            this.handleRouting();
         },
-        checkHash() {
-            if (window.location.hash === HASH_SECRET) {
-                document.getElementById('admin-modal').classList.remove('hidden');
-                document.getElementById('adm-pass').focus();
+        handleRouting() {
+            const path = window.location.pathname;
+            const hash = window.location.hash;
+            
+            // Si la URL contiene el secreto o el hash secreto
+            if (path.includes(ADMIN_PASS) || hash.includes(ADMIN_PASS)) {
+                document.getElementById('hub-content').classList.add('hidden');
+                document.getElementById('login-screen').classList.remove('hidden');
+                document.getElementById('login-input').focus();
+                
+                document.getElementById('login-input').onkeydown = (e) => {
+                    if (e.key === "Enter") Hub.doLogin();
+                };
             }
         },
         render(files, isAdmin, myId) {
@@ -82,7 +91,7 @@
             list.innerHTML = files.map(f => `
                 <div class="card">
                     <div style="overflow:hidden">
-                        <div style="font-size:14px; font-weight:bold; white-space:nowrap; text-overflow:ellipsis; overflow:hidden" title="${f.displayName}">${f.displayName}</div>
+                        <div style="font-size:14px; font-weight:bold; white-space:nowrap; text-overflow:ellipsis; overflow:hidden">${f.displayName}</div>
                         <div style="font-size:11px; color:#8b949e">${f.owner === myId ? 'Subido por ti' : 'Archivo Público'}</div>
                     </div>
                     <div style="display:flex; gap:6px; flex-shrink:0">
@@ -107,7 +116,7 @@
                         document.getElementById('adm-ind').innerHTML = '<span class="tag adm-tag">ADMIN</span>';
                         document.getElementById('logout-zone').classList.remove('hidden');
                     } else { STORE.clear(); }
-                } catch (e) { console.error("Verify failed"); }
+                } catch (e) {}
             }
             this.load();
         },
@@ -116,13 +125,28 @@
                 const res = await fetch(API);
                 state.files = await res.json();
                 UI.render(state.files, state.isAdmin, STORE.id());
-            } catch (e) { document.getElementById('list').innerHTML = "Error al conectar con el depósito."; }
+            } catch (e) { document.getElementById('list').innerHTML = "Error de conexión"; }
+        },
+        async doLogin() {
+            const val = document.getElementById('login-input').value.trim();
+            const err = document.getElementById('login-error');
+            
+            if (val === ADMIN_PASS) {
+                const res = await fetch(`${API}?action=verify`, { headers: { 'x-admin-password': val } });
+                const data = await res.json();
+                if (data.authorized) {
+                    STORE.admin(val);
+                    window.location.href = 'hub.html'; // Redirigir para limpiar URL
+                } else { err.classList.remove('hidden'); }
+            } else {
+                err.classList.remove('hidden');
+            }
         },
         async upload(file) {
             if (!file) return;
             const st = document.getElementById('up-st');
             const type = document.querySelector('input[name="mode"]:checked').value;
-            st.innerText = "Subiendo archivo ninja...";
+            st.innerText = "Subiendo...";
             const reader = new FileReader();
             reader.onload = async (e) => {
                 const res = await fetch(API, {
@@ -132,36 +156,24 @@
                 });
                 const data = await res.json();
                 if (res.ok) {
-                    if (type === 'temp') prompt("¡Link Temporal Generado! (Válido 15-20m):", data.url);
-                    else { alert("Archivo guardado en el depósito."); this.load(); }
+                    if (type === 'temp') prompt("Link Temporal:", data.url);
+                    else this.load();
                 } else alert("Error: " + data.error);
                 st.innerText = "";
             };
             reader.readAsDataURL(file);
         },
         async del(name, sha, owner) {
-            if (!confirm("¿Deseas eliminar este archivo permanentemente?")) return;
-            const res = await fetch(API, {
+            if (!confirm("¿Borrar archivo?")) return;
+            await fetch(API, {
                 method: 'DELETE',
                 headers: { 'Content-Type': 'application/json', 'x-admin-password': STORE.admin() || '', 'x-user-id': STORE.id() },
                 body: JSON.stringify({ name, sha, owner })
             });
-            if (res.ok) this.load();
-            else alert("No tienes permisos para borrar este archivo.");
-        },
-        async loginFromModal() {
-            const pass = document.getElementById('adm-pass').value.trim();
-            if (!pass) return;
-            const res = await fetch(`${API}?action=verify`, { headers: { 'x-admin-password': pass } });
-            const data = await res.json();
-            if (data.authorized) {
-                STORE.admin(pass);
-                history.replaceState(null, null, 'hub.html'); // Limpiar el hash de la URL
-                location.reload();
-            } else { alert("Link maestro inválido."); }
+            this.load();
         },
         logout() { STORE.clear(); location.reload(); },
-        copy(txt) { navigator.clipboard.writeText(txt); alert("¡Link copiado!"); }
+        copy(txt) { navigator.clipboard.writeText(txt); alert("Copiado"); }
     };
 
     Hub.init();

@@ -6,49 +6,61 @@
     <title>Bienvenido Ninja 🥷</title>
     <style>
         body { font-family: sans-serif; background: #0d1117; color: white; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
-        .box { text-align: center; padding: 2rem; border: 1px solid #30363d; border-radius: 12px; background: #161b22; }
+        .box { text-align: center; padding: 2rem; border: 1px solid #30363d; border-radius: 12px; background: #161b22; max-width: 400px; }
         h1 { color: #58a6ff; }
+        input { background: #0d1117; border: 1px solid #30363d; color: white; padding: 10px; border-radius: 6px; width: 80%; margin: 10px 0; }
+        button { background: #238636; color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; }
         .hidden { display: none; }
     </style>
 </head>
 <body>
 
-<div class="box">
+<div class="box" id="main-box">
     <h1>Ninja File Host 📦</h1>
     <p>Solo para sombras autorizadas.</p>
     <a href="hub.html" style="color: #58a6ff; text-decoration: none;">Ir al Hub Público ➔</a>
+    <br><br>
+    <small style="color: #8b949e; cursor: pointer;" onclick="showLogin()">Acceso Admin</small>
+</div>
+
+<div class="box hidden" id="login-box">
+    <h1>Admin Login 🔐</h1>
+    <input type="password" id="admin-pass" placeholder="Password Ninja">
+    <input type="text" id="api-url" placeholder="URL de Vercel (https://...)">
+    <button onclick="login()">Entrar</button>
 </div>
 
 <script>
-    let sequence = "";
-    const SECRET = "Holaquetalsoypepi5#";
     const STORAGE_KEY = "ninja_api_url";
     const PASS_KEY = "ninja_admin_pass";
 
+    function showLogin() {
+        document.getElementById('main-box').classList.add('hidden');
+        document.getElementById('login-box').classList.remove('hidden');
+        
+        // Auto-llenar si ya existen
+        if (localStorage.getItem(STORAGE_KEY)) document.getElementById('api-url').value = localStorage.getItem(STORAGE_KEY);
+    }
+
+    function login() {
+        const pass = document.getElementById('admin-pass').value;
+        const url = document.getElementById('api-url').value;
+
+        if (pass === "Holaquetalsoypepi5#" && url.startsWith('http')) {
+            localStorage.setItem(STORAGE_KEY, url);
+            localStorage.setItem(PASS_KEY, pass);
+            alert("✨ Acceso concedido.");
+            window.location.href = "hub.html";
+        } else {
+            alert("❌ Datos incorrectos.");
+        }
+    }
+
+    // Mantener también el truco del teclado por si acaso
+    let sequence = "";
     document.addEventListener('keydown', (e) => {
         sequence += e.key;
-        if (sequence.length > 50) sequence = sequence.substring(1);
-        
-        if (sequence.endsWith(SECRET)) {
-            sequence = "";
-            let apiUrl = localStorage.getItem(STORAGE_KEY);
-            let pass = localStorage.getItem(PASS_KEY);
-
-            if (!apiUrl) {
-                apiUrl = prompt("🔓 Acceso de Desarrollador Detectado.\nIntroduce la URL de tu API de Vercel:");
-                if (apiUrl) localStorage.setItem(STORAGE_KEY, apiUrl);
-            }
-
-            if (!pass) {
-                pass = prompt("Introduce tu Password de Admin:");
-                if (pass) localStorage.setItem(PASS_KEY, pass);
-            }
-
-            if (apiUrl && pass) {
-                alert("✨ Identidad verificada. Entrando al Hub modo Admin...");
-                window.location.href = "hub.html";
-            }
-        }
+        if (sequence.endsWith("Holaquetalsoypepi5#")) showLogin();
     });
 </script>
 

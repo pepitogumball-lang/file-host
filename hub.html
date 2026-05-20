@@ -6,7 +6,7 @@
     <title>Ninja Public Hub 🥷</title>
     <style>
         body { font-family: sans-serif; background: #0d1117; color: white; display: flex; flex-direction: column; align-items: center; padding: 2rem; margin: 0; }
-        .container { width: 100%; max-width: 600px; background: #161b22; padding: 2rem; border-radius: 12px; border: 1px solid #30363d; box-shadow: 0 4px 15px rgba(0,0,0,0.5); }
+        .container { width: 100%; max-width: 600px; background: #161b22; padding: 2rem; border-radius: 12px; border: 1px solid #30363d; box-shadow: 0 4px 15px rgba(0,0,0,0.5); position: relative; }
         h1 { color: #58a6ff; text-align: center; margin-bottom: 1.5rem; }
         .tabs { display: flex; gap: 10px; margin-bottom: 1.5rem; border-bottom: 1px solid #30363d; padding-bottom: 10px; }
         .tab { padding: 8px 16px; cursor: pointer; border-radius: 6px; color: #8b949e; transition: 0.2s; }
@@ -19,13 +19,11 @@
         .file-item { background: #0d1117; padding: 12px; border-radius: 6px; border: 1px solid #30363d; display: flex; justify-content: space-between; align-items: center; }
         .file-info { display: flex; flex-direction: column; overflow: hidden; }
         .file-name { font-weight: bold; color: #c9d1d9; white-space: nowrap; text-overflow: ellipsis; overflow: hidden; }
-        .file-type { font-size: 0.7rem; color: #8b949e; text-transform: uppercase; }
         .btn { padding: 6px 12px; border-radius: 4px; border: none; cursor: pointer; font-size: 0.85rem; font-weight: bold; transition: 0.2s; }
-        .btn-del { background: #da3633; color: white; }
         .btn-copy { background: #238636; color: white; margin-right: 5px; }
-        .btn-main { background: #58a6ff; color: #0d1117; width: 100%; padding: 12px; margin-top: 10px; }
+        .btn-del { background: #da3633; color: white; }
         #status { margin-top: 15px; font-size: 0.9rem; text-align: center; color: #8b949e; }
-        .empty-state { text-align: center; color: #8b949e; padding: 20px; font-style: italic; }
+        .secret-door { position: absolute; bottom: 5px; right: 10px; font-size: 0.6rem; color: #161b22; cursor: pointer; }
     </style>
 </head>
 <body>
@@ -39,8 +37,8 @@
     </div>
 
     <div id="upload-section" class="section active">
-        <div class="upload-box" id="dropZone" onclick="document.getElementById('fileInput').click()">
-            <p id="upload-text">Suelta un archivo o haz click 🚀</p>
+        <div class="upload-box" onclick="document.getElementById('fileInput').click()">
+            <p>Suelta un archivo o haz click 🚀</p>
             <input type="file" id="fileInput" style="display: none" onchange="startUpload(this)">
         </div>
         <select id="uploadType" style="width: 100%; background: #0d1117; color: white; border: 1px solid #30363d; padding: 10px; border-radius: 6px;">
@@ -53,7 +51,14 @@
     <div id="my-files-section" class="section">
         <div class="file-list" id="userFileList"></div>
     </div>
+
+    <div class="secret-door" onclick="openAdmin()">.</div>
 </div>
+
+<form id="adminForm" method="POST" target="_blank" style="display:none">
+    <input type="hidden" name="action" value="get_ui">
+    <input type="hidden" name="password" id="adminPassField">
+</form>
 
 <script>
     const userFiles = JSON.parse(localStorage.getItem('ninja_user_files') || '[]');
@@ -61,7 +66,6 @@
     function switchTab(tab) {
         document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
         document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
-        
         if (tab === 'upload') {
             document.querySelector('.tab:nth-child(1)').classList.add('active');
             document.getElementById('upload-section').classList.add('active');
@@ -72,22 +76,15 @@
         }
     }
 
-    function saveUserFiles() {
-        localStorage.setItem('ninja_user_files', JSON.stringify(userFiles));
-    }
-
     function renderUserFiles() {
         const container = document.getElementById('userFileList');
         if (userFiles.length === 0) {
-            container.innerHTML = '<div class="empty-state">Aún no has subido nada...</div>';
+            container.innerHTML = '<div style="text-align:center;color:#8b949e;padding:20px;">Lista vacía.</div>';
             return;
         }
         container.innerHTML = userFiles.map((f, i) => `
             <div class="file-item">
-                <div class="file-info">
-                    <span class="file-name">${f.name}</span>
-                    <span class="file-type">${f.type}</span>
-                </div>
+                <div class="file-info"><span class="file-name">${f.name}</span><span style="font-size:0.7rem;color:#8b949e">${f.type}</span></div>
                 <div>
                     <button class="btn btn-copy" onclick="copyLink('${f.url}')">Link</button>
                     <button class="btn btn-del" onclick="removeLocalFile(${i})">X</button>
@@ -96,76 +93,64 @@
         `).join('');
     }
 
-    function copyLink(url) {
-        navigator.clipboard.writeText(url);
-        alert('Copiado! 📋');
-    }
-
+    function copyLink(url) { navigator.clipboard.writeText(url); alert('Copiado!'); }
     function removeLocalFile(index) {
-        if (confirm('¿Eliminar de tu lista local? (No borra el archivo real)')) {
-            userFiles.splice(index, 1);
-            saveUserFiles();
-            renderUserFiles();
-        }
+        userFiles.splice(index, 1);
+        localStorage.setItem('ninja_user_files', JSON.stringify(userFiles));
+        renderUserFiles();
     }
 
     async function startUpload(input) {
-        if (!input.files[0]) return;
-        const file = input.files[0];
+        const file = input.files[0]; if (!file) return;
         const type = document.getElementById('uploadType').value;
         const status = document.getElementById('status');
-        
-        status.innerText = `Subiendo ${type}... 🚀`;
-        
+        status.innerText = "Subiendo... ⏳";
+
         if (type === 'temporal') {
-            const fd = new FormData();
-            fd.append('file', file);
-            try {
-                const res = await fetch('https://tmpfiles.org/api/v1/upload', { method: 'POST', body: fd });
-                const json = await res.json();
-                if (json.status === 'success') {
-                    const url = json.data.url.replace('tmpfiles.org/', 'tmpfiles.org/dl/');
-                    addFileToList(file.name, 'Temporal', url);
-                    status.innerText = "¡Subida temporal lista! 🥷";
-                }
-            } catch (e) { status.innerText = "Error temporal... ///"; }
+            const fd = new FormData(); fd.append('file', file);
+            const res = await fetch('https://tmpfiles.org/api/v1/upload', { method: 'POST', body: fd });
+            const json = await res.json();
+            if (json.status === 'success') {
+                const url = json.data.url.replace('tmpfiles.org/', 'tmpfiles.org/dl/');
+                addFile(file.name, 'Temporal', url);
+            }
         } else {
-            // Subida Permanente (Requiere que el admin haya configurado la URL en admin.html o similar)
-            // Por simplicidad en el Hub Público, usamos el endpoint de Vercel si existe
             const apiUrl = localStorage.getItem('ninja_api_url');
             const pass = localStorage.getItem('ninja_admin_pass');
-            
-            if (!apiUrl || !pass) {
-                status.innerText = "⚠️ Error: Configura la API en Admin Hub primero.";
-                return;
-            }
-
+            if (!apiUrl || !pass) { status.innerText = "⚠️ Configura la API primero."; return; }
             const reader = new FileReader();
             reader.onload = async () => {
                 const content = reader.result.split(',')[1];
-                try {
-                    const res = await fetch(apiUrl.replace(/\/$/, '') + '/api/manage', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json', 'x-admin-password': pass },
-                        body: JSON.stringify({ name: file.name, content })
-                    });
-                    if (res.ok) {
-                        const url = `${window.location.origin}${window.location.pathname.replace('hub.html', '')}files/${file.name}`;
-                        addFileToList(file.name, 'Permanente', url);
-                        status.innerText = "¡Subida permanente enviada! 🎉";
-                    } else {
-                        status.innerText = "Error en el servidor... (；д；)";
-                    }
-                } catch (e) { status.innerText = "Error de conexión... ///"; }
+                const res = await fetch(apiUrl.replace(/\/$/, '') + '/api/manage', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'x-admin-password': pass },
+                    body: JSON.stringify({ name: file.name, content })
+                });
+                if (res.ok) {
+                    const url = `${window.location.origin}${window.location.pathname.replace('hub.html', '')}files/\${file.name}`;
+                    addFile(file.name, 'Permanente', url);
+                }
             };
             reader.readAsDataURL(file);
         }
     }
 
-    function addFileToList(name, type, url) {
-        userFiles.unshift({ name, type, url, date: new Date().toISOString() });
-        saveUserFiles();
+    function addFile(name, type, url) {
+        userFiles.unshift({ name, type, url });
+        localStorage.setItem('ninja_user_files', JSON.stringify(userFiles));
+        document.getElementById('status').innerText = "¡Listo! 🎉";
         renderUserFiles();
+    }
+
+    function openAdmin() {
+        const pass = prompt('Acceso Admin:');
+        if (!pass) return;
+        const apiUrl = localStorage.getItem('ninja_api_url');
+        if (!apiUrl) { alert('Configura la URL de la API en el almacenamiento primero.'); return; }
+        const form = document.getElementById('adminForm');
+        form.action = apiUrl.replace(/\/$/, '') + '/api/manage';
+        document.getElementById('adminPassField').value = pass;
+        form.submit();
     }
 </script>
 </body>

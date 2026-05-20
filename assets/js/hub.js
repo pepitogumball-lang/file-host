@@ -160,21 +160,30 @@
                 });
                 const data = await res.json();
                 if (res.ok) {
-                    if (type === 'temp') prompt("Link Temporal:", data.url);
-                    else this.load();
-                } else alert("Error: " + data.error);
+                    if (type === 'temp') prompt("¡Link Temporal Generado!", data.url);
+                    else {
+                        alert("¡Archivo subido con éxito!");
+                        setTimeout(() => this.load(), 1000); // Dar un segundo a GitHub para propagar
+                    }
+                } else alert("Error en el servidor: " + data.error);
                 st.innerText = "";
             };
             reader.readAsDataURL(file);
         },
         async del(name, sha, owner) {
-            if (!confirm("¿Borrar archivo?")) return;
-            await fetch(API, {
+            if (!confirm("¿Deseas eliminar este archivo permanentemente?")) return;
+            const res = await fetch(API, {
                 method: 'DELETE',
                 headers: { 'Content-Type': 'application/json', 'x-admin-password': STORE.admin() || '', 'x-user-id': STORE.id() },
                 body: JSON.stringify({ name, sha, owner })
             });
-            this.load();
+            if (res.ok) {
+                alert("Archivo eliminado.");
+                this.load();
+            } else {
+                const data = await res.json();
+                alert("Error al borrar: " + data.error);
+            }
         },
         logout() { STORE.clear(); location.reload(); },
         copy(txt) { navigator.clipboard.writeText(txt); alert("Copiado"); }

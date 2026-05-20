@@ -24,7 +24,11 @@ export default async function handler(req, res) {
   if (method === 'GET') {
     try {
       const response = await fetch(`https://api.github.com/repos/${repo}/contents/files`, {
-        headers: { 'Authorization': `Bearer ${githubToken}`, 'Accept': 'application/vnd.github+json' }
+        headers: { 
+          'Authorization': `Bearer ${githubToken}`, 
+          'Accept': 'application/vnd.github+json',
+          'User-Agent': 'Ninja-Hub-Uploader'
+        }
       });
       const data = await response.json();
       if (!Array.isArray(data)) return res.status(200).json([]);
@@ -67,7 +71,8 @@ export default async function handler(req, res) {
         headers: { 
           'Authorization': `Bearer ${githubToken}`, 
           'Accept': 'application/vnd.github+json',
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          'User-Agent': 'Ninja-Hub-Uploader'
         },
         body: JSON.stringify({
           message: `Upload [${type}]: ${finalName}`,
@@ -75,13 +80,17 @@ export default async function handler(req, res) {
         })
       });
 
-      if (!uploadRes.ok) throw new Error('Upload failed');
+      if (!uploadRes.ok) {
+        const errBody = await uploadRes.text();
+        throw new Error(`GitHub Error: ${uploadRes.status} - ${errBody}`);
+      }
 
       return res.status(200).json({ 
         success: true, 
         url: `https://pepitogumball-lang.github.io/file-host/${folder}/${finalName}` 
       });
     } catch (error) {
+      console.error(error);
       return res.status(500).json({ error: error.message });
     }
   }
@@ -101,7 +110,8 @@ export default async function handler(req, res) {
         headers: { 
           'Authorization': `Bearer ${githubToken}`, 
           'Accept': 'application/vnd.github+json',
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          'User-Agent': 'Ninja-Hub-Uploader'
         },
         body: JSON.stringify({ message: `Delete: ${name}`, sha: sha })
       });

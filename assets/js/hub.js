@@ -6,8 +6,12 @@
 
     const STORE = {
         id: () => {
-            if (!localStorage.getItem(UID_KEY)) localStorage.setItem(UID_KEY, 'u' + Math.random().toString(36).substr(2, 7));
-            return localStorage.getItem(UID_KEY);
+            let uid = localStorage.getItem(UID_KEY);
+            if (!uid) {
+                uid = 'ninja-' + Math.random().toString(36).substring(2, 15) + '-' + Date.now().toString(36);
+                localStorage.setItem(UID_KEY, uid);
+            }
+            return uid;
         },
         admin: (val) => val !== undefined ? localStorage.setItem(AUTH_KEY, val) : localStorage.getItem(AUTH_KEY),
         clear: () => localStorage.removeItem(AUTH_KEY)

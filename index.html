@@ -91,6 +91,166 @@
         button:hover {
             background: #484f58;
         }
+    </style>
+</head>
+<body>
+
+<div class="box">
+
+    <h2>Ninja Host 🥷</h2>
+
+    <p style="color: #8b949e; margin-bottom: 1.5rem;">
+        Sube archivos y genera links ninja
+    </p>
+
+    <label for="fileInput">Seleccionar archivo</label>
+
+    <input type="file" id="fileInput">
+
+    <div id="status"></div>
+
+    <div id="result">
+        <p style="font-size: 0.9rem;">Tu link ninja:</p>
+
+        <code id="final-url"></code>
+
+        <button onclick="copyLink()">
+            Copiar link
+        </button>
+    </div>
+
+</div>
+
+<script>
+    // =========================
+    // MODO NINJA
+    // =========================
+
+    const urlParams =
+        new URLSearchParams(window.location.search);
+
+    if (urlParams.get('n')) {
+
+        const rawUrl =
+            decodeURIComponent(urlParams.get('n'));
+
+        // Redirección directa al link crudo
+        window.location.replace(rawUrl);
+    }
+
+    // =========================
+    // SUBIDA
+    // =========================
+
+    const input =
+        document.getElementById('fileInput');
+
+    const status =
+        document.getElementById('status');
+
+    const result =
+        document.getElementById('result');
+
+    const finalUrl =
+        document.getElementById('final-url');
+
+    input.onchange = async () => {
+
+        if (!input.files[0]) return;
+
+        status.innerText =
+            "Subiendo archivo... 🚀";
+
+        const fd = new FormData();
+
+        fd.append('file', input.files[0]);
+
+        try {
+
+            const res = await fetch(
+                'https://tmpfiles.org/api/v1/upload',
+                {
+                    method: 'POST',
+                    body: fd
+                }
+            );
+
+            const json = await res.json();
+
+            if (json.status === 'success') {
+
+                const directUrl =
+                    json.data.url.replace(
+                        'tmpfiles.org/',
+                        'tmpfiles.org/dl/'
+                    );
+
+                const ninjaLink =
+                    `${window.location.origin}${window.location.pathname}?n=${encodeURIComponent(directUrl)}`;
+
+                finalUrl.innerText =
+                    ninjaLink;
+
+                result.style.display =
+                    'block';
+
+                status.innerText =
+                    "¡Subida lista! 🥷";
+
+            } else {
+
+                status.innerText =
+                    "Etto... falló la subida. (；д；)";
+            }
+
+        } catch (e) {
+
+            status.innerText =
+                "Error de conexión... ///";
+        }
+    };
+
+    // =========================
+    // COPIAR LINK
+    // =========================
+
+    function copyLink() {
+
+        navigator.clipboard.writeText(
+            finalUrl.innerText
+        );
+
+        alert("Link copiado 🥷");
+    }
+</script>
+
+</body>
+</html>            border-radius: 6px;
+            border: 1px dashed #58a6ff;
+            display: block;
+            margin-top: 10px;
+            color: #58a6ff;
+            font-size: 0.85rem;
+        }
+
+        h2 {
+            color: #58a6ff;
+            margin-bottom: 0.5rem;
+        }
+
+        button {
+            margin-top: 12px;
+            background: #30363d;
+            color: white;
+            border: none;
+            padding: 10px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background: #484f58;
+        }
 
         .download-mode {
             text-align: center;

@@ -5,122 +5,144 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Ninja Hub 🥷</title>
     <style>
-        :root { --primary: #58a6ff; --bg: #0d1117; --card: #161b22; --border: #30363d; --text: #c9d1d9; }
-        body { font-family: -apple-system, sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 20px; display: flex; flex-direction: column; align-items: center; }
-        .container { width: 100%; max-width: 800px; }
-        h1 { color: var(--primary); font-size: 1.5rem; }
-        .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 15px; margin-top: 20px; }
-        .card { background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 15px; transition: 0.2s; }
-        .card h3 { margin: 0 0 10px 0; font-size: 1rem; color: var(--primary); }
-        .card p { margin: 5px 0; font-size: 0.85rem; color: #8b949e; }
-        .actions { margin-top: 15px; display: flex; gap: 10px; }
-        button { background: #21262d; border: 1px solid var(--border); color: var(--primary); padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 0.85rem; }
+        :root { --primary: #58a6ff; --bg: #0d1117; --card: #161b22; --border: #30363d; --text: #c9d1d9; --success: #3fb950; --danger: #f85149; }
+        body { font-family: -apple-system, sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 20px; display: flex; flex-direction: column; align-items: center; min-height: 100vh; }
+        .container { width: 100%; max-width: 850px; }
+        .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); padding-bottom: 10px; margin-bottom: 20px; }
+        h1 { color: var(--primary); margin: 0; font-size: 1.5rem; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 15px; }
+        .card { background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 15px; display: flex; flex-direction: column; }
+        .card h3 { margin: 0 0 10px 0; font-size: 1rem; color: var(--primary); word-break: break-all; }
+        .actions { margin-top: auto; display: flex; flex-wrap: wrap; gap: 8px; padding-top: 15px; }
+        button { background: #21262d; border: 1px solid var(--border); color: var(--text); padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 0.8rem; flex-grow: 1; }
+        button:hover { background: #30363d; }
+        .btn-link { color: var(--primary); }
+        .btn-del { color: var(--danger); border-color: #f8514933; }
         
-        /* Panel de Admin Oculto por defecto */
-        #admin-panel { display: none; margin-top: 30px; padding: 20px; border-top: 1px dashed var(--border); width: 100%; }
-        .upload-area { border: 2px dashed var(--border); padding: 30px; text-align: center; border-radius: 12px; cursor: pointer; margin-bottom: 20px; }
-        .upload-area:hover { border-color: var(--primary); }
+        #admin-panel { display: none; margin-top: 40px; padding: 20px; background: #161b22; border: 1px solid var(--border); border-radius: 12px; width: 100%; box-sizing: border-box; }
+        .upload-area { border: 2px dashed var(--border); padding: 40px; text-align: center; border-radius: 10px; cursor: pointer; margin-bottom: 20px; transition: 0.3s; }
+        .upload-area:hover { border-color: var(--success); background: #1f242b; }
         input[type="file"] { display: none; }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h1>Archivos 📦</h1>
-    <p id="status-text" style="color: #8b949e; font-size: 0.9rem;">Cargando lista...</p>
+    <div class="header">
+        <h1>Ninja Hub 📦</h1>
+        <a href="index.html" style="color: #8b949e; text-decoration: none; font-size: 0.9rem;">Volver ➔</a>
+    </div>
+    <p id="status" style="color: #8b949e; margin-bottom: 20px;">Escaneando repositorio...</p>
     <div id="file-grid" class="grid"></div>
 </div>
 
 <div id="admin-panel" class="container">
-    <h2 style="color: #3fb950;">Panel de Control 🛠️</h2>
+    <h2 style="color: var(--success); margin-top: 0;">Panel de Administración 🛠️</h2>
     <div class="upload-area" onclick="document.getElementById('file-input').click()">
-        <span>Click para subir archivo</span>
-        <input type="file" id="file-input" onchange="handleUpload(this.files[0])">
+        <span id="upload-label">Soltar archivo o hacer Click para subir</span>
+        <input type="file" id="file-input" onchange="uploadFile(this.files[0])">
     </div>
-    <button onclick="logout()" style="color: #f85149; border-color: #f8514922;">Cerrar Sesión</button>
+    <div style="display: flex; justify-content: space-between; align-items: center;">
+        <small style="color: #8b949e;">Sesión activa: Sombras</small>
+        <button onclick="logout()" style="max-width: 150px; border-color: var(--danger); color: var(--danger);">Cerrar Sesión</button>
+    </div>
 </div>
 
 <script>
-    const STORAGE_KEY = "ninja_api_url";
-    const PASS_KEY = "ninja_admin_pass";
-    let apiUrl = localStorage.getItem(STORAGE_KEY);
-    let pass = localStorage.getItem(PASS_KEY);
+    const API_URL = localStorage.getItem("ninja_api_url");
+    const PASS = localStorage.getItem("ninja_admin_pass");
 
-    async function loadFiles() {
+    async function load() {
         const grid = document.getElementById('file-grid');
-        const status = document.getElementById('status-text');
+        const status = document.getElementById('status');
         
         try {
-            let response = await fetch('files.json').catch(() => null);
-            let files = [];
-            
-            if (response && response.ok) {
-                files = await response.json();
-                status.innerText = "Lista pública actualizada.";
-            }
+            const res = await fetch('files.json?' + Date.now());
+            const files = res.ok ? await res.json() : [];
 
             if (files.length === 0) {
-                status.innerText = "No hay archivos disponibles.";
+                status.innerText = "No se encontraron archivos en el depósito.";
                 return;
             }
 
+            status.innerText = `${files.length} archivos detectados.`;
             grid.innerHTML = '';
-            files.forEach(file => {
-                const url = file.permanent_url || `${window.location.origin}/files/${file.name}`;
+            
+            files.forEach(f => {
+                const permLink = `${window.location.origin}${window.location.pathname.replace('hub.html', '')}files/${f.name}`;
+                const tempLink = API_URL ? `${API_URL}/api/raw?name=${f.name}` : '#';
+
                 const card = document.createElement('div');
                 card.className = 'card';
                 card.innerHTML = `
-                    <h3>${file.name}</h3>
+                    <h3>${f.name}</h3>
                     <div class="actions">
-                        <button onclick="window.open('${url}')">Ver</button>
-                        ${pass ? `<button style="color:#f85149" onclick="deleteFile('${file.name}', '${file.sha}')">Borrar</button>` : ''}
+                        <button class="btn-link" onclick="copy('${permLink}')">Link Perm.</button>
+                        <button class="btn-link" onclick="copy('${tempLink}')">Link Temp.</button>
+                        ${PASS ? `<button class="btn-del" onclick="del('${f.name}', '${f.sha}')">Borrar</button>` : ''}
                     </div>
                 `;
                 grid.appendChild(card);
             });
 
-            // Mostrar panel solo si hay sesión activa
-            if (pass && apiUrl) {
+            if (PASS && API_URL) {
                 document.getElementById('admin-panel').style.display = 'block';
             }
-
         } catch (e) {
-            status.innerText = "Error de conexión.";
+            status.innerText = "Error cargando archivos.";
         }
     }
 
-    async function handleUpload(file) {
-        if (!file || !apiUrl || !pass) return;
+    function copy(text) {
+        navigator.clipboard.writeText(text);
+        alert("Copiado al portapapeles!");
+    }
+
+    async function uploadFile(file) {
+        if (!file || !API_URL) return;
+        const label = document.getElementById('upload-label');
+        label.innerText = `Subiendo ${file.name}...`;
+
         const reader = new FileReader();
         reader.onload = async (e) => {
             const content = e.target.result.split(',')[1];
-            const res = await fetch(apiUrl.replace(/\/$/, '') + '/api/manage', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'x-admin-password': pass },
-                body: JSON.stringify({ name: file.name, content })
-            });
-            if (res.ok) { alert("Subido!"); loadFiles(); }
-            else alert("Error al subir.");
+            try {
+                const res = await fetch(`${API_URL}/api/manage`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'x-admin-password': PASS },
+                    body: JSON.stringify({ name: file.name, content })
+                });
+                if (res.ok) {
+                    alert("¡Archivo subido con éxito!");
+                    location.reload();
+                } else {
+                    alert("Fallo en la subida. Revisa el password.");
+                }
+            } catch (err) {
+                alert("Error de conexión con la API.");
+            }
+            label.innerText = "Click para subir otro archivo";
         };
         reader.readAsDataURL(file);
     }
 
-    async function deleteFile(name, sha) {
-        if (!confirm(`¿Borrar ${name}?`)) return;
-        const res = await fetch(apiUrl.replace(/\/$/, '') + '/api/manage', {
+    async function del(name, sha) {
+        if (!confirm(`¿Estás seguro de eliminar ${name}?`)) return;
+        const res = await fetch(`${API_URL}/api/manage`, {
             method: 'DELETE',
-            headers: { 'Content-Type': 'application/json', 'x-admin-password': pass },
+            headers: { 'Content-Type': 'application/json', 'x-admin-password': PASS },
             body: JSON.stringify({ name, sha })
         });
-        if (res.ok) loadFiles();
+        if (res.ok) location.reload();
+        else alert("No se pudo borrar.");
     }
 
     function logout() {
         localStorage.clear();
-        window.location.reload();
+        location.reload();
     }
 
-    loadFiles();
+    load();
 </script>
 
 </body>

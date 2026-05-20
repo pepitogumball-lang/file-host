@@ -1,0 +1,38 @@
+name: Update File List
+
+on:
+  push:
+    paths:
+      - 'files/**'
+  workflow_dispatch:
+
+jobs:
+  update-list:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Generate files.json
+        run: |
+          echo "[" > files.json
+          first=true
+          find files -type f ! -name ".gitkeep" | while read file; do
+            if [ "$first" = true ]; then
+              first=false
+            else
+              echo "," >> files.json
+            fi
+            name=$(basename "$file")
+            size=$(stat -c%s "$file")
+            echo "{\"name\": \"$name\", \"size\": $size}" >> files.json
+          done
+          echo "]" >> files.json
+
+      - name: Commit and push
+        run: |
+          git config --global user.name "Ninja Bot"
+          git config --global user.email "ninja@zapia.com"
+          git add files.json
+          git commit -m "Update file list [skip ci]" || exit 0
+          git push

@@ -5,65 +5,27 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Ninja File Host 📦</title>
     <style>
-        body { font-family: -apple-system, sans-serif; background: #0d1117; color: white; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; overflow: hidden; }
-        .box { text-align: center; padding: 2rem; border: 1px solid #30363d; border-radius: 12px; background: #161b22; max-width: 400px; }
-        h1 { color: #58a6ff; }
-        a { color: #58a6ff; text-decoration: none; font-weight: bold; }
-        #secret-login { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); z-index: 1000; justify-content: center; align-items: center; }
-        .modal { background: #161b22; padding: 2rem; border: 1px solid #30363d; border-radius: 12px; text-align: center; box-shadow: 0 0 20px rgba(0,0,0,0.5); }
-        input { background: #0d1117; border: 1px solid #30363d; color: white; padding: 12px; border-radius: 6px; width: 250px; margin: 10px 0; display: block; font-size: 1rem; }
-        button { background: #238636; color: white; border: none; padding: 12px 20px; border-radius: 6px; cursor: pointer; width: 100%; font-weight: bold; }
-        button:hover { background: #2ea043; }
+        body { font-family: -apple-system, sans-serif; background: #0d1117; color: white; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
+        .box { text-align: center; padding: 3rem; border: 1px solid #30363d; border-radius: 16px; background: #161b22; max-width: 450px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+        h1 { color: #58a6ff; font-size: 2rem; margin-bottom: 1rem; }
+        p { color: #8b949e; line-height: 1.6; margin-bottom: 2rem; }
+        .btn { background: #238636; color: white; text-decoration: none; padding: 12px 24px; border-radius: 8px; font-weight: bold; transition: 0.2s; display: inline-block; }
+        .btn:hover { background: #2ea043; transform: translateY(-2px); }
     </style>
 </head>
 <body>
 
 <div class="box">
     <h1>Ninja File Host 📦</h1>
-    <p>Depósito de archivos seguro y privado.</p>
-    <a href="hub.html">Ver Archivos Públicos ➔</a>
-</div>
-
-<div id="secret-login">
-    <div class="modal">
-        <h2 style="color: #58a6ff; margin-top: 0;">Acceso Sombras 🔐</h2>
-        <input type="password" id="admin-pass" placeholder="Password Maestro">
-        <input type="text" id="api-url" placeholder="URL de Vercel (https://...)">
-        <button onclick="login()">Entrar al Panel</button>
-        <p style="font-size: 0.8rem; color: #8b949e; margin-top: 15px; cursor: pointer;" onclick="closeModal()">[ Cancelar ]</p>
-    </div>
+    <p>Depósito de archivos de alta velocidad. Seguro, privado y minimalista.</p>
+    <a href="hub.html" class="btn">Entrar al Depósito</a>
 </div>
 
 <script>
-    const SECRET = "Holaquetalsoypepi5#";
-
-    function checkAccess() {
-        // Detectar si el hash es #Holaquetalsoypepi5# o si está en la URL
-        if (window.location.hash === "#" + SECRET || window.location.href.includes(SECRET)) {
-            document.getElementById('secret-login').style.display = 'flex';
-        }
+    // Secreto para el ID de Admin (si es necesario en el futuro)
+    if (window.location.hash === "#Holaquetalsoypepi5#") {
+        console.log("Modo Privilegiado Activado");
     }
-
-    function closeModal() {
-        document.getElementById('secret-login').style.display = 'none';
-        window.location.hash = "";
-    }
-
-    function login() {
-        const pass = document.getElementById('admin-pass').value;
-        const url = document.getElementById('api-url').value.replace(/\/$/, '');
-
-        if (pass === SECRET) {
-            localStorage.setItem("ninja_api_url", url);
-            localStorage.setItem("ninja_admin_pass", pass);
-            window.location.href = "hub.html";
-        } else {
-            alert("Acceso Denegado.");
-        }
-    }
-
-    window.addEventListener('hashchange', checkAccess);
-    window.onload = checkAccess;
 </script>
 
 </body>

@@ -1,35 +1,30 @@
 export default async function handler(req, res) {
+  // CORS
   res.setHeader('Access-Control-Allow-Credentials', true);
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,PATCH,DELETE,POST,PUT');
   res.setHeader('Access-Control-Allow-Headers', 'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version, X-Admin-Password');
 
-  if (req.method === 'OPTIONS') {
-    res.status(200).end();
-    return;
-  }
+  if (req.method === 'OPTIONS') return res.status(200).end();
 
   const { method } = req;
   const adminPassword = process.env.ADMIN_PASSWORD;
   const githubToken = process.env.GH_TOKEN;
-  const userPassword = req.headers['x-admin-password'] || req.body?.password;
+  const userPassword = req.headers['x-admin-password'];
 
-  if (method === 'GET' && !req.headers['x-admin-password']) {
-    return res.status(200).json({ status: 'Ninja Backend Online 🥷' });
+  // 1. Verificación de Admin (Auth check)
+  if (method === 'GET' && req.query.action === 'verify') {
+    if (adminPassword && userPassword === adminPassword) {
+      return res.status(200).json({ authorized: true, role: 'ninja-admin' });
+    }
+    return res.status(401).json({ authorized: false });
   }
 
-  if (!adminPassword || userPassword !== adminPassword) {
-    return res.status(401).json({ error: 'Unauthorized' });
-  }
-
-  const repo = 'pepitogumball-lang/file-host';
-  // Soporta carpetas 'files' o 'temp'
-  const folder = req.body?.folder || req.query?.folder || 'files';
-  const baseUrl = `https://api.github.com/repos/${repo}/contents/${folder}`;
-
-  try {
-    if (method === 'GET') {
-      const response = await fetch(baseUrl, {
+  // 2. Modo Público: Listar archivos permanentes
+  if (method === 'GET' && !req.query.action) {
+    try {
+      const repo = 'pepitogumball-lang/file-host';
+      const response = await fetch(`https://api.github.com/repos/${repo}/contents/files`, {
         headers: { 'Authorization': `Bearer ${githubToken}`, 'Accept': 'application/vnd.github+json' }
       });
       const data = await response.json();
@@ -41,66 +36,81 @@ export default async function handler(req, res) {
           name: item.name,
           sha: item.sha,
           size: item.size,
-          permanent_url: `https://pepitogumball-lang.github.io/file-host/${folder}/${item.name}`
+          url: `https://pepitogumball-lang.github.io/file-host/files/${item.name}`
         }));
-      
       return res.status(200).json(files);
+    } catch (e) {
+      return res.status(500).json({ error: 'Error al listar archivos' });
     }
+  }
 
-    if (method === 'POST') {
-      const { name, content } = req.body;
-      if (!name || !content) return res.status(400).json({ error: 'Missing data' });
+  // Restricción de seguridad para POST/DELETE
+  if (!adminPassword || userPassword !== adminPassword) {
+    return res.status(401).json({ error: 'Acceso denegado' });
+  }
 
-      const safeName = name.replace(/[^a-z0-9.-]/gi, '_');
-      const uploadUrl = `${baseUrl}/${safeName}`;
+  // 3. Subida (POST)
+  if (method === 'POST') {
+    const { name, content, folder } = req.body; // folder: 'files' o 'temp'
+    if (!name || !content) return res.status(400).json({ error: 'Faltan datos' });
 
+    const targetFolder = folder === 'temp' ? 'temp' : 'files';
+    const safeName = name.replace(/[^a-z0-9.-]/gi, '_');
+    const repo = 'pepitogumball-lang/file-host';
+    const uploadUrl = `https://api.github.com/repos/${repo}/contents/${targetFolder}/${safeName}`;
+
+    try {
       const uploadRes = await fetch(uploadUrl, {
         method: 'PUT',
         headers: { 
-            'Authorization': `Bearer ${githubToken}`, 
-            'Accept': 'application/vnd.github+json',
-            'Content-Type': 'application/json'
+          'Authorization': `Bearer ${githubToken}`, 
+          'Accept': 'application/vnd.github+json',
+          'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          message: `Ninja Upload [${folder}]: ${safeName}`,
+          message: `Ninja Upload [${targetFolder}]: ${safeName}`,
           content: content
         })
       });
 
-      const result = await uploadRes.json();
-      if (!uploadRes.ok) throw new Error(result.message);
-      
+      if (!uploadRes.ok) {
+        const err = await uploadRes.json();
+        throw new Error(err.message);
+      }
+
       return res.status(200).json({ 
         success: true, 
         name: safeName, 
-        url: `https://pepitogumball-lang.github.io/file-host/${folder}/${safeName}` 
+        url: `https://pepitogumball-lang.github.io/file-host/${targetFolder}/${safeName}` 
       });
+    } catch (error) {
+      return res.status(500).json({ error: error.message });
     }
+  }
 
-    if (method === 'DELETE') {
-      const { name, sha } = req.body;
-      const deleteRes = await fetch(`${baseUrl}/${name}`, {
+  // 4. Borrado (DELETE)
+  if (method === 'DELETE') {
+    const { name, sha } = req.body;
+    const repo = 'pepitogumball-lang/file-host';
+    const deleteUrl = `https://api.github.com/repos/${repo}/contents/files/${name}`;
+
+    try {
+      const deleteRes = await fetch(deleteUrl, {
         method: 'DELETE',
         headers: { 
-            'Authorization': `Bearer ${githubToken}`, 
-            'Accept': 'application/vnd.github+json',
-            'Content-Type': 'application/json'
+          'Authorization': `Bearer ${githubToken}`, 
+          'Accept': 'application/vnd.github+json',
+          'Content-Type': 'application/json'
         },
-        body: JSON.stringify({
-          message: `Ninja Delete [${folder}]: ${name}`,
-          sha: sha
-        })
+        body: JSON.stringify({ message: `Admin Delete: ${name}`, sha: sha })
       });
 
-      if (!deleteRes.ok) {
-          const err = await deleteRes.json();
-          throw new Error(err.message);
-      }
+      if (!deleteRes.ok) throw new Error('No se pudo borrar');
       return res.status(200).json({ success: true });
+    } catch (error) {
+      return res.status(500).json({ error: error.message });
     }
-
-    res.status(405).json({ error: 'Method Not Allowed' });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
   }
+
+  res.status(405).json({ error: 'Method Not Allowed' });
 }

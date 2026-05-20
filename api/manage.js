@@ -1,5 +1,4 @@
 export default async function handler(req, res) {
-  // CORS configuration
   res.setHeader('Access-Control-Allow-Credentials', true);
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,PATCH,DELETE,POST,PUT');
@@ -15,32 +14,25 @@ export default async function handler(req, res) {
   const githubToken = process.env.GH_TOKEN;
   const userPassword = req.headers['x-admin-password'] || req.body?.password;
 
-  // Status check for debugging
   if (method === 'GET' && !req.headers['x-admin-password']) {
-    return res.status(200).json({ 
-      status: 'Ninja Backend Online 🥷',
-      config: {
-        hasPassword: !!adminPassword,
-        hasToken: !!githubToken
-      }
-    });
+    return res.status(200).json({ status: 'Ninja Backend Online 🥷' });
   }
 
   if (!adminPassword || userPassword !== adminPassword) {
-    return res.status(401).json({ error: 'Unauthorized: Password incorrecto' });
+    return res.status(401).json({ error: 'Unauthorized' });
   }
 
   const repo = 'pepitogumball-lang/file-host';
-  const baseUrl = `https://api.github.com/repos/${repo}/contents/files`;
+  // Soporta carpetas 'files' o 'temp'
+  const folder = req.body?.folder || req.query?.folder || 'files';
+  const baseUrl = `https://api.github.com/repos/${repo}/contents/${folder}`;
 
   try {
-    // LIST FILES (GET - Authenticated)
     if (method === 'GET') {
       const response = await fetch(baseUrl, {
         headers: { 'Authorization': `Bearer ${githubToken}`, 'Accept': 'application/vnd.github+json' }
       });
       const data = await response.json();
-      
       if (!Array.isArray(data)) return res.status(200).json([]);
       
       const files = data
@@ -49,19 +41,16 @@ export default async function handler(req, res) {
           name: item.name,
           sha: item.sha,
           size: item.size,
-          download_url: item.download_url,
-          permanent_url: `https://pepitogumball-lang.github.io/file-host/files/${item.name}`
+          permanent_url: `https://pepitogumball-lang.github.io/file-host/${folder}/${item.name}`
         }));
       
       return res.status(200).json(files);
     }
 
-    // UPLOAD FILE (POST)
     if (method === 'POST') {
       const { name, content } = req.body;
-      if (!name || !content) return res.status(400).json({ error: 'Falta nombre o contenido' });
+      if (!name || !content) return res.status(400).json({ error: 'Missing data' });
 
-      // Sanitización básica
       const safeName = name.replace(/[^a-z0-9.-]/gi, '_');
       const uploadUrl = `${baseUrl}/${safeName}`;
 
@@ -73,7 +62,7 @@ export default async function handler(req, res) {
             'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          message: `Admin Upload: ${safeName}`,
+          message: `Ninja Upload [${folder}]: ${safeName}`,
           content: content
         })
       });
@@ -81,14 +70,15 @@ export default async function handler(req, res) {
       const result = await uploadRes.json();
       if (!uploadRes.ok) throw new Error(result.message);
       
-      return res.status(200).json({ success: true, file: safeName });
+      return res.status(200).json({ 
+        success: true, 
+        name: safeName, 
+        url: `https://pepitogumball-lang.github.io/file-host/${folder}/${safeName}` 
+      });
     }
 
-    // DELETE FILE (DELETE)
     if (method === 'DELETE') {
       const { name, sha } = req.body;
-      if (!name || !sha) return res.status(400).json({ error: 'Falta nombre o sha' });
-
       const deleteRes = await fetch(`${baseUrl}/${name}`, {
         method: 'DELETE',
         headers: { 
@@ -97,7 +87,7 @@ export default async function handler(req, res) {
             'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          message: `Admin Delete: ${name}`,
+          message: `Ninja Delete [${folder}]: ${name}`,
           sha: sha
         })
       });
@@ -106,14 +96,11 @@ export default async function handler(req, res) {
           const err = await deleteRes.json();
           throw new Error(err.message);
       }
-      
       return res.status(200).json({ success: true });
     }
 
-    res.status(405).json({ error: `Method ${method} Not Allowed` });
-
+    res.status(405).json({ error: 'Method Not Allowed' });
   } catch (error) {
-    console.error(error);
     res.status(500).json({ error: error.message });
   }
 }

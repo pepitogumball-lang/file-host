@@ -8,16 +8,21 @@ module.exports = async (req, res) => {
   const owner = "pepitogumball-lang";
   const repo = "file-host";
 
-  try {
-    const { data } = await octokit.repos.getContent({
-      owner,
-      repo,
-      path: `files/${name}`,
-    });
+  const tryPaths = [`files/${name}`, `temp/${name}`];
+  let fileData = null;
 
-    const content = Buffer.from(data.content, 'base64');
-    
-    // Intentar adivinar el content-type
+  for (const path of tryPaths) {
+    try {
+      const { data } = await octokit.repos.getContent({ owner, repo, path });
+      fileData = data;
+      break;
+    } catch (e) { continue; }
+  }
+
+  if (!fileData) return res.status(404).send("Archivo no encontrado");
+
+  try {
+    const content = Buffer.from(fileData.content, 'base64');
     const ext = name.split('.').pop().toLowerCase();
     const types = {
       'png': 'image/png', 'jpg': 'image/jpeg', 'jpeg': 'image/jpeg',
@@ -27,10 +32,9 @@ module.exports = async (req, res) => {
     };
 
     res.setHeader('Content-Type', types[ext] || 'application/octet-stream');
-    res.setHeader('Cache-Control', 's-maxage=3600, stale-while-revalidate'); // Temporal (1 hora cache)
+    res.setHeader('Cache-Control', 's-maxage=3600, stale-while-revalidate');
     res.send(content);
-
   } catch (error) {
-    res.status(404).send("Archivo no encontrado");
+    res.status(500).send("Error procesando archivo");
   }
 };

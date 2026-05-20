@@ -3,126 +3,78 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Zapia Ninja Host</title>
+    <title>Ninja File Host 🥷</title>
     <style>
-        body { font-family: -apple-system, system-ui, sans-serif; background: #0d1117; color: #c9d1d9; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; }
-        .card { background: #161b22; border: 1px solid #30363d; padding: 2rem; border-radius: 12px; width: 100%; max-width: 400px; text-align: center; }
-        h1 { font-size: 1.5rem; margin-bottom: 1.5rem; color: #58a6ff; }
-        input[type="file"] { display: none; }
-        .btn { background: #238636; color: white; padding: 12px 24px; border-radius: 6px; cursor: pointer; font-weight: bold; display: inline-block; transition: 0.2s; }
-        .btn:hover { background: #2ea043; }
-        .token-section { margin-bottom: 1rem; }
-        input[type="password"] { background: #0d1117; border: 1px solid #30363d; color: white; padding: 8px; border-radius: 4px; width: 80%; }
-        #status { margin-top: 1rem; font-size: 0.9rem; color: #8b949e; }
-        .result-link { margin-top: 1.5rem; display: none; background: #0d1117; padding: 10px; border-radius: 6px; border: 1px dashed #58a6ff; }
-        .copy-btn { background: transparent; border: 1px solid #58a6ff; color: #58a6ff; padding: 5px 10px; border-radius: 4px; cursor: pointer; margin-top: 5px; font-size: 0.8rem; }
+        body { font-family: sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; background: #0d1117; color: white; margin: 0; }
+        .box { background: #161b22; padding: 2.5rem; border-radius: 12px; border: 1px solid #30363d; box-shadow: 0 4px 15px rgba(0,0,0,0.5); text-align: center; width: 100%; max-width: 400px; }
+        input { display: none; }
+        label { background: #238636; color: white; padding: 12px 24px; border-radius: 6px; cursor: pointer; transition: 0.2s; font-weight: bold; }
+        label:hover { background: #2ea043; }
+        #result { margin-top: 25px; display: none; word-break: break-all; }
+        #status { margin-top: 15px; font-size: 0.9rem; color: #8b949e; }
+        code { background: #0d1117; padding: 10px; border-radius: 6px; border: 1px dashed #58a6ff; display: block; margin-top: 10px; color: #58a6ff; font-size: 0.85rem; }
+        h2 { color: #58a6ff; margin-bottom: 0.5rem; }
     </style>
 </head>
 <body>
 
-    <div class="card" id="main-ui">
-        <h1>Ninja File Host 🥷</h1>
-        
-        <div class="token-section">
-            <input type="password" id="gh-token" placeholder="Pega tu GitHub Token aquí...">
-            <p style="font-size: 10px;">(Se guarda en tu navegador)</p>
-        </div>
-
-        <label class="btn" for="file-input">Seleccionar Archivo</label>
-        <input type="file" id="file-input" multiple>
-
-        <div id="status">Listo para subir.</div>
-
-        <div class="result-link" id="result-box">
-            <p style="font-size: 12px; margin-top:0;">¡Link Permanente!</p>
-            <code id="final-url" style="word-break: break-all; font-size: 11px; color: #58a6ff;"></code>
-            <br>
-            <button class="copy-btn" onclick="copyLink()">Copiar Link</button>
-        </div>
+<div class="box">
+    <h2>Ninja Host 🥷</h2>
+    <p style="color: #8b949e; margin-bottom: 1.5rem;">Sube archivos y genera links ninja</p>
+    <label for="fileInput">Seleccionar archivo</label>
+    <input type="file" id="fileInput">
+    <div id="status"></div>
+    <div id="result">
+        <p style="font-size: 0.9rem;">Tu link ninja:</p>
+        <code id="final-url"></code>
     </div>
+</div>
 
-    <script>
-        const urlParams = new URLSearchParams(window.location.search);
-        const fileToDownload = urlParams.get('v');
+<script>
+    const input = document.getElementById('fileInput');
+    const status = document.getElementById('status');
+    const result = document.getElementById('result');
+    const finalUrl = document.getElementById('final-url');
 
-        // LÓGICA DE DESCARGA NINJA
-        if (fileToDownload) {
-            document.body.innerHTML = "<h1>Descargando...</h1>";
-            const link = document.createElement('a');
-            link.href = fileToDownload;
-            link.download = fileToDownload;
-            document.body.appendChild(link);
-            link.click();
+    // LÓGICA DE SUBIDA
+    input.onchange = async () => {
+        if (!input.files[0]) return;
+        
+        status.innerText = "Subiendo archivo... 🚀";
+        const fd = new FormData();
+        fd.append('file', input.files[0]);
+
+        try {
+            // API de tmpfiles.org
+            const res = await fetch('https://tmpfiles.org/api/v1/upload', { 
+                method: 'POST', 
+                body: fd 
+            });
+            const json = await res.json();
             
-            // Sacar al usuario después de iniciar la descarga
-            setTimeout(() => {
-                window.location.href = "about:blank"; 
-            }, 500);
-        }
-
-        // LÓGICA DE SUBIDA
-        const tokenInput = document.getElementById('gh-token');
-        const fileInput = document.getElementById('file-input');
-        const status = document.getElementById('status');
-        const resultBox = document.getElementById('result-box');
-        const finalUrl = document.getElementById('final-url');
-
-        // Cargar token si existe
-        if (localStorage.getItem('gh_token')) {
-            tokenInput.value = localStorage.getItem('gh_token');
-        }
-
-        fileInput.onchange = async () => {
-            const token = tokenInput.value;
-            if (!token) {
-                alert("Primero pega tu token de GitHub.");
-                return;
-            }
-            localStorage.setItem('gh_token', token);
-
-            for (const file of fileInput.files) {
-                status.innerText = `Subiendo ${file.name}...`;
+            if (json.status === 'success') {
+                const directUrl = json.data.url.replace('tmpfiles.org/', 'tmpfiles.org/dl/');
+                const ninjaLink = `${window.location.origin}${window.location.pathname}?n=${directUrl}`;
                 
-                const reader = new FileReader();
-                reader.onload = async (e) => {
-                    const content = e.target.result.split(',')[1];
-                    const filename = file.name.replace(/\s+/g, '_'); // Limpiar espacios
-
-                    try {
-                        const res = await fetch(`https://api.github.com/repos/pepitogumball-lang/file-host/contents/${filename}`, {
-                            method: 'PUT',
-                            headers: {
-                                'Authorization': `Bearer ${token}`,
-                                'Accept': 'application/vnd.github+json'
-                            },
-                            body: JSON.stringify({
-                                message: `Upload ${filename}`,
-                                content: content
-                            })
-                        });
-
-                        if (res.ok) {
-                            const baseUrl = window.location.origin + window.location.pathname;
-                            const downloadUrl = `${baseUrl}?v=${filename}`;
-                            finalUrl.innerText = downloadUrl;
-                            resultBox.style.display = 'block';
-                            status.innerText = "¡Subida completa!";
-                        } else {
-                            const err = await res.json();
-                            status.innerText = "Error: " + err.message;
-                        }
-                    } catch (error) {
-                        status.innerText = "Error de conexión.";
-                    }
-                };
-                reader.readAsDataURL(file);
+                finalUrl.innerText = ninjaLink;
+                result.style.display = 'block';
+                status.innerText = "¡Subida lista! 🥷";
+            } else {
+                status.innerText = "Etto... falló la subida. (；д；)";
             }
-        };
-
-        function copyLink() {
-            navigator.clipboard.writeText(finalUrl.innerText);
-            alert("¡Link copiado!");
+        } catch (e) {
+            status.innerText = "Error de conexión... ///";
         }
-    </script>
+    };
+
+    // MODO NINJA
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('n')) {
+        const downloadUrl = urlParams.get('n');
+        window.location.href = downloadUrl;
+        setTimeout(() => { window.location.href = "about:blank"; }, 800);
+    }
+</script>
+
 </body>
 </html>

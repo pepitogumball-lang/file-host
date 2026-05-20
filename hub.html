@@ -19,61 +19,97 @@
         .btn-link { color: var(--primary); }
         .btn-del { color: var(--danger); border-color: #f8514933; }
         
-        #admin-panel { display: none; margin-top: 40px; padding: 20px; background: #161b22; border: 1px solid var(--border); border-radius: 12px; width: 100%; box-sizing: border-box; }
+        #admin-view { display: none; margin-top: 40px; padding: 20px; background: #161b22; border: 1px solid var(--border); border-radius: 12px; width: 100%; box-sizing: border-box; }
         .upload-area { border: 2px dashed var(--border); padding: 40px; text-align: center; border-radius: 10px; cursor: pointer; margin-bottom: 20px; transition: 0.3s; }
         .upload-area:hover { border-color: var(--success); background: #1f242b; }
         input[type="file"] { display: none; }
+        
+        /* Input invisible para activar modo admin */
+        #ghost-input { position: fixed; bottom: 0; right: 0; opacity: 0; width: 1px; height: 1px; border: none; }
     </style>
 </head>
 <body>
 
 <div class="container">
     <div class="header">
-        <h1>Ninja Hub 📦</h1>
-        <a href="index.html" style="color: #8b949e; text-decoration: none; font-size: 0.9rem;">Volver ➔</a>
+        <h1>Archivos Públicos 📦</h1>
+        <a href="index.html" style="color: #8b949e; text-decoration: none; font-size: 0.9rem;">Inicio ➔</a>
     </div>
     <p id="status" style="color: #8b949e; margin-bottom: 20px;">Cargando archivos...</p>
     <div id="file-grid" class="grid"></div>
 </div>
 
-<div id="admin-panel" class="container">
-    <h2 style="color: var(--success); margin-top: 0;">Panel de Administración 🛠️</h2>
+<!-- Vista de Administración que solo aparece si el ID coincide -->
+<div id="admin-view" class="container">
+    <h2 style="color: var(--success); margin-top: 0;">Panel Ninja 🛠️</h2>
     <div class="upload-area" onclick="document.getElementById('file-input').click()">
-        <span id="upload-label">Click para subir un nuevo archivo</span>
+        <span id="upload-label">Soltar archivo o Click para subir</span>
         <input type="file" id="file-input" onchange="uploadFile(this.files[0])">
     </div>
-    <div style="display: flex; justify-content: space-between; align-items: center;">
-        <small style="color: #8b949e;">Sesión activa: Sombras Autorizadas</small>
-        <button onclick="logout()" style="max-width: 150px; border-color: var(--danger); color: var(--danger);">Cerrar Sesión</button>
-    </div>
+    <button onclick="logout()" style="max-width: 150px; border-color: var(--danger); color: var(--danger);">Ocultar Panel</button>
 </div>
 
+<!-- Input fantasma para escuchar la URL de Vercel -->
+<input type="text" id="ghost-input">
+
 <script>
-    const API_URL = localStorage.getItem("ninja_api_url");
-    const PASS = localStorage.getItem("ninja_admin_pass");
+    // Generar un ID único para este navegador si no existe
+    if (!localStorage.getItem("ninja_device_id")) {
+        localStorage.setItem("ninja_device_id", "ninja_" + Math.random().toString(36).substr(2, 9));
+    }
+
+    const ADMIN_ID_KEY = "is_ninja_admin";
+    const VERCEL_URL_KEY = "ninja_vercel_url";
+    const MASTER_PASS = "Holaquetalsoypepi5#";
+
+    function checkAdminStatus() {
+        if (localStorage.getItem(ADMIN_ID_KEY) === "true") {
+            document.getElementById('admin-view').style.display = 'block';
+            return true;
+        }
+        return false;
+    }
+
+    // Escuchar "ghost-input" para activar el modo admin
+    document.addEventListener('keydown', (e) => {
+        if (e.key === "Enter") {
+            const input = document.getElementById('ghost-input');
+            const val = input.value.trim();
+            
+            // Si el usuario pega la URL de Vercel y da Enter
+            if (val.includes("vercel.app")) {
+                localStorage.setItem(VERCEL_URL_KEY, val.replace(/\/$/, ''));
+                localStorage.setItem(ADMIN_ID_KEY, "true");
+                alert("Identidad Ninja confirmada.");
+                location.reload();
+            }
+            input.value = "";
+        }
+        // Enfocar el input invisible si no hay nada enfocado
+        if (document.activeElement.tagName !== "INPUT") {
+            document.getElementById('ghost-input').focus();
+        }
+    });
 
     async function load() {
         const grid = document.getElementById('file-grid');
         const status = document.getElementById('status');
-        
-        // MOSTRAR PANEL DE ADMIN DE INMEDIATO SI EXISTE SESIÓN
-        if (PASS && API_URL) {
-            document.getElementById('admin-panel').style.display = 'block';
-        }
+        const isAdmin = checkAdminStatus();
+        const vercelUrl = localStorage.getItem(VERCEL_URL_KEY);
 
         try {
             const res = await fetch('files.json?' + Date.now());
             const files = res.ok ? await res.json() : [];
 
             if (files.length === 0) {
-                status.innerText = "No hay archivos públicos todavía.";
-                grid.innerHTML = '<p style="grid-column: 1/-1; text-align: center; color: #8b949e; padding: 40px;">El depósito está vacío.</p>';
+                status.innerText = "No hay archivos disponibles.";
+                grid.innerHTML = '<p style="grid-column: 1/-1; text-align: center; color: #8b949e; padding: 40px;">Lista vacía.</p>';
             } else {
-                status.innerText = `${files.length} archivos en el depósito.`;
+                status.innerText = `${files.length} archivos detectados.`;
                 grid.innerHTML = '';
                 files.forEach(f => {
                     const permLink = `${window.location.origin}${window.location.pathname.replace('hub.html', '')}files/${f.name}`;
-                    const tempLink = API_URL ? `${API_URL}/api/raw?name=${f.name}` : '#';
+                    const tempLink = vercelUrl ? `${vercelUrl}/api/raw?name=${f.name}` : '#';
                     const card = document.createElement('div');
                     card.className = 'card';
                     card.innerHTML = `
@@ -81,65 +117,53 @@
                         <div class="actions">
                             <button class="btn-link" onclick="copy('${permLink}')">Link Perm.</button>
                             <button class="btn-link" onclick="copy('${tempLink}')">Link Temp.</button>
-                            ${PASS ? `<button class="btn-del" onclick="del('${f.name}', '${f.sha}')">Borrar</button>` : ''}
+                            ${isAdmin ? `<button class="btn-del" onclick="del('${f.name}', '${f.sha}')">Borrar</button>` : ''}
                         </div>
                     `;
                     grid.appendChild(card);
                 });
             }
         } catch (e) {
-            status.innerText = "Error al conectar con la base de datos.";
+            status.innerText = "Error de conexión.";
         }
     }
 
     function copy(text) {
         navigator.clipboard.writeText(text);
-        alert("¡Link copiado!");
+        alert("Copiado!");
     }
 
     async function uploadFile(file) {
-        if (!file || !API_URL) return;
-        const label = document.getElementById('upload-label');
-        label.innerText = `Subiendo: ${file.name}...`;
-
+        const url = localStorage.getItem(VERCEL_URL_KEY);
+        if (!file || !url) return;
+        document.getElementById('upload-label').innerText = "Subiendo...";
         const reader = new FileReader();
         reader.onload = async (e) => {
             const content = e.target.result.split(',')[1];
-            try {
-                const res = await fetch(`${API_URL}/api/manage`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'x-admin-password': PASS },
-                    body: JSON.stringify({ name: file.name, content })
-                });
-                if (res.ok) {
-                    alert("¡Archivo subido!");
-                    location.reload();
-                } else {
-                    alert("Error en la subida. Verifica tu configuración.");
-                }
-            } catch (err) {
-                alert("Error de conexión con Vercel.");
-            }
-            label.innerText = "Click para subir otro archivo";
+            const res = await fetch(`${url}/api/manage`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'x-admin-password': MASTER_PASS },
+                body: JSON.stringify({ name: file.name, content })
+            });
+            if (res.ok) location.reload();
+            else alert("Error al subir.");
         };
         reader.readAsDataURL(file);
     }
 
     async function del(name, sha) {
-        if (!confirm(`¿Eliminar ${name} permanentemente?`)) return;
-        try {
-            const res = await fetch(`${API_URL}/api/manage`, {
-                method: 'DELETE',
-                headers: { 'Content-Type': 'application/json', 'x-admin-password': PASS },
-                body: JSON.stringify({ name, sha })
-            });
-            if (res.ok) location.reload();
-            else alert("No se pudo borrar.");
-        } catch (e) { alert("Error de conexión."); }
+        const url = localStorage.getItem(VERCEL_URL_KEY);
+        if (!confirm(`Borrar ${name}?`) || !url) return;
+        const res = await fetch(`${url}/api/manage`, {
+            method: 'DELETE',
+            headers: { 'Content-Type': 'application/json', 'x-admin-password': MASTER_PASS },
+            body: JSON.stringify({ name, sha })
+        });
+        if (res.ok) location.reload();
     }
 
     function logout() {
-        localStorage.clear();
+        localStorage.removeItem(ADMIN_ID_KEY);
         location.reload();
     }
 

@@ -9,12 +9,11 @@
         .box { text-align: center; padding: 2rem; border: 1px solid #30363d; border-radius: 12px; background: #161b22; max-width: 400px; }
         h1 { color: #58a6ff; }
         a { color: #58a6ff; text-decoration: none; font-weight: bold; }
-        
-        /* Modal Secreto */
-        #secret-login { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 1000; justify-content: center; align-items: center; }
-        .modal { background: #161b22; padding: 2rem; border: 1px solid #30363d; border-radius: 12px; text-align: center; }
-        input { background: #0d1117; border: 1px solid #30363d; color: white; padding: 12px; border-radius: 6px; width: 250px; margin: 10px 0; display: block; }
-        button { background: #238636; color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; width: 100%; }
+        #secret-login { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); z-index: 1000; justify-content: center; align-items: center; }
+        .modal { background: #161b22; padding: 2rem; border: 1px solid #30363d; border-radius: 12px; text-align: center; box-shadow: 0 0 20px rgba(0,0,0,0.5); }
+        input { background: #0d1117; border: 1px solid #30363d; color: white; padding: 12px; border-radius: 6px; width: 250px; margin: 10px 0; display: block; font-size: 1rem; }
+        button { background: #238636; color: white; border: none; padding: 12px 20px; border-radius: 6px; cursor: pointer; width: 100%; font-weight: bold; }
+        button:hover { background: #2ea043; }
     </style>
 </head>
 <body>
@@ -25,22 +24,22 @@
     <a href="hub.html">Ver Archivos Públicos ➔</a>
 </div>
 
-<!-- Solo se activa con el Hash Secreto -->
 <div id="secret-login">
     <div class="modal">
-        <h2 style="color: #58a6ff;">Panel de Sombra 🔐</h2>
+        <h2 style="color: #58a6ff; margin-top: 0;">Acceso Sombras 🔐</h2>
         <input type="password" id="admin-pass" placeholder="Password Maestro">
-        <input type="text" id="api-url" placeholder="URL de la API (Vercel)">
-        <button onclick="login()">Desbloquear Hub</button>
-        <p style="font-size: 0.7rem; color: #8b949e; margin-top: 15px; cursor: pointer;" onclick="closeModal()">Cancelar</p>
+        <input type="text" id="api-url" placeholder="URL de Vercel (https://...)">
+        <button onclick="login()">Entrar al Panel</button>
+        <p style="font-size: 0.8rem; color: #8b949e; margin-top: 15px; cursor: pointer;" onclick="closeModal()">[ Cancelar ]</p>
     </div>
 </div>
 
 <script>
-    const SECRET_HASH = "#Holaquetalsoypepi5#";
-    
-    function checkHash() {
-        if (window.location.hash === SECRET_HASH) {
+    const SECRET = "Holaquetalsoypepi5#";
+
+    function checkAccess() {
+        // Detectar si el hash es #Holaquetalsoypepi5# o si está en la URL
+        if (window.location.hash === "#" + SECRET || window.location.href.includes(SECRET)) {
             document.getElementById('secret-login').style.display = 'flex';
         }
     }
@@ -52,9 +51,9 @@
 
     function login() {
         const pass = document.getElementById('admin-pass').value;
-        const url = document.getElementById('api-url').value;
+        const url = document.getElementById('api-url').value.replace(/\/$/, '');
 
-        if (pass === "Holaquetalsoypepi5#") {
+        if (pass === SECRET) {
             localStorage.setItem("ninja_api_url", url);
             localStorage.setItem("ninja_admin_pass", pass);
             window.location.href = "hub.html";
@@ -63,8 +62,8 @@
         }
     }
 
-    window.addEventListener('hashchange', checkHash);
-    window.onload = checkHash;
+    window.addEventListener('hashchange', checkAccess);
+    window.onload = checkAccess;
 </script>
 
 </body>
